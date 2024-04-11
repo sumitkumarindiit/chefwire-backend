@@ -1,0 +1,43 @@
+{
+  "name": "chefwire",
+  "version": "1.0.0",
+  "description": "chefwire",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon app.js",
+    "start-server": "pm2 start index.js",
+    "stop": "pm2 stop index.js",
+    "build": "webpack --config webpack.prod.js --mode production"
+  },
+  "author": "Sumit Kumar",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1593.0",
+    "bcrypt": "^5.1.1",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-fileupload": "^1.5.0",
+    "firebase-admin": "^12.0.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.12.3",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "mongoose": "^8.3.0",
+    "node-cron": "^3.0.3",
+    "sib-api-v3-sdk": "^8.5.0",
+    "socket.io": "^4.7.5",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "twilio": "^5.0.3",
+    "ua-parser-js": "^1.0.37",
+    "yaml": "^2.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}
