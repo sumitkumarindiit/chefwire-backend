@@ -21,12 +21,20 @@ export const signupSchema = joi.object({
   socialMediaId:joi.string()
 });
 export const loginSchema = joi.object({
-  email: joi.string().email().required(),
+  email: joi.string().email().when("socialMediaId",{
+    is:joi.exist(),
+    then:joi.forbidden(),
+    otherwise:joi.required()
+  }),
   password: joi
-  .string() 
-  // .min(6)
+  .string()
   .max(50)
-  .required(),
+  .when("socialMediaId",{
+    is:joi.exist(),
+    then:joi.forbidden(),
+    otherwise:joi.required()
+  }),
+  socialMediaId:joi.string()
 });
 export const forgotSchema = joi.object({
   email: joi.string().email().required(),

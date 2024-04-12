@@ -4,7 +4,7 @@ import Sib from "sib-api-v3-sdk";
 import twilio from "twilio";
 
 export const authUser = (obj) => {
-  return jwt.sign(obj, process.env.JWT_SECRET);
+  return jwt.sign(obj, process.env.JWT_SECRET, {expiresIn: '15d', algorithm: 'HS256' });
 };
 
 export const validateRequest = (schema, value, res) => {
@@ -28,7 +28,7 @@ export const errorMsg = (res, message, code, err) => {
   if (err && err instanceof jwt.JsonWebTokenError) {
     return res.status(code).json({ status: false, message: "Invalid token" });
   }
-  return res.status(code).json({ status: false, message: message });
+  return res.status(code===500?code:200).json({ status: false, message: message });
 };
 export const ObjectIdRequired = () => {
   return joi.string().hex().length(24).required();

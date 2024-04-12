@@ -27,13 +27,13 @@ export const signup = async (req, res) => {
       // const messagebody = `Your signup otp is: ${otp}`;
       // await Helper.sendMessage("+919304242964", messagebody);
       // return Helper.successMsg(res,Constants.OTP_SENT_MOBILE,user);
-       return Helper.successMsg(res,Constants.SIGNUP,user);
+      return Helper.successMsg(res, Constants.SIGNUP, user);
     }
-    let [emailRegistered,mobileRegistered, userRole] = await Promise.all([
+    let [emailRegistered, mobileRegistered, userRole] = await Promise.all([
       User.findOne({
         email: restBody.email?.toLowerCase(),
       }),
-      User.findOne({mobileNumber:restBody.mobileNumber}),
+      User.findOne({ mobileNumber: restBody.mobileNumber }),
       Role.findOne({ role: "user" }),
     ]);
     if (!userRole) {
@@ -42,13 +42,13 @@ export const signup = async (req, res) => {
     }
     if (emailRegistered) {
       if (emailRegistered.status === Constants.INACTIVE) {
-        return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP,{});
+        return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP, {});
       } else {
         return Helper.errorMsg(res, Constants.EMAIL_EXIST, 409);
       }
-    }else if(mobileRegistered){
+    } else if (mobileRegistered) {
       if (mobileRegistered.status === Constants.INACTIVE) {
-        return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP,{});
+        return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP, {});
       } else {
         return Helper.errorMsg(res, Constants.MOBILE_EXIST, 409);
       }
@@ -57,16 +57,16 @@ export const signup = async (req, res) => {
       const user = await User.create({
         ...restBody,
         password: hashedPwd,
-        role: userRole._id
+        role: userRole._id,
       });
       const otpRes = await Otp.create({
-        user_id: user._id,
-        otp
+        userId: user._id,
+        otp,
       });
       if (!otpRes) return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 404);
       const messagebody = `Your signup otp is: ${otp}`;
       await Helper.sendMessage("+919304242964", messagebody);
-      return Helper.successMsg(res,Constants.OTP_SENT_MOBILE,user);
+      return Helper.successMsg(res, Constants.OTP_SENT_MOBILE, user);
     }
   } catch (err) {
     console.log(err);
@@ -98,11 +98,11 @@ export const verifyOTP = async (req, res) => {
           .select("-__v -updatedAt -createdAt -password")
           .lean();
     if (user) {
-      if (type === "SIGNUP" || type === "LOGIN") {
-        const result = await Forgot.findOneAndUpdate(
+      if (type === "SIGNUP") {
+        const result = await Otp.findOneAndUpdate(
           {
-            user_id: user._id,
-            verification_string: otp,
+            userId: user._id,
+            otp,
             status: Constants.ACTIVE,
           },
           { status: Constants.INACTIVE }
@@ -110,12 +110,12 @@ export const verifyOTP = async (req, res) => {
         if (!result) {
           return Helper.warningMsg(res, Constants.INVALID_OTP);
         }
-        await User.findByIdAndUpdate(user._id, { email_verified: true });
-
-        user.token = authUser(user);
-        await Helper.sendEmail(email, WelcomeEmail, "Welcome Letter");
+        const currentTime = new Date.now();
+        const checkTime = result?.updatedAt
+        
+        await User.findByIdAndUpdate(user._id, { otpVerified: true });
         return Helper.successMsg(res, Constants.SIGNUP_SUCCESS, user);
-      } else {
+      } else if(type==="FORGOT") {
         const result = await Forgot.findOneAndUpdate(
           {
             user_id: user._id,
@@ -130,7 +130,7 @@ export const verifyOTP = async (req, res) => {
         return Helper.successMsg(res, Constants.OTP_VERIFIED, {});
       }
     } else {
-      return Helper.warningMsg(res, Constants.EMAIL_NOT_EXIST);
+      return Helper.warningMsg(res, Constants.WRONG_EMAIL);
     }
   } catch (err) {
     console.log(err);
@@ -168,73 +168,65 @@ export const resendOtp = async (req, res, next) => {
 export const signin = async (req, res) => {
   try {
     if (Helper.validateRequest(validateUser.loginSchema, req.body, res)) return;
-    const { email, password } = req.body;
+    const { email, password, socialMediaId } = req.body;
+    let match = {
+      emai: email.toLowerCase(),
+    };
+    if (socialMediaId) {
+      match = {
+        socialMediaId: socialMediaId,
+      };
+    }
     const usr = await User.aggregate([
       {
-        $match: { email: email.toLowerCase() },
+        $match: match,
       },
       ...userCommonAggregation(),
     ]);
     if (!usr[0]) {
-      return Helper.warningMsg(res, Constants.EMAIL_NOT_EXIST);
+      return Helper.warningMsg(res, Constants.WRONG_EMAIL);
     } else if (usr[0].status !== Constants.ACTIVE) {
-      return Helper.errorMsg(res, "BLOCKED", 400);
-    } else if (!usr[0].email_verified) {
+      return Helper.errorMsg(res, Constants.BLOCKED, 200);
+    } else if (!usr[0].otpVerified) {
       const otp = Helper.generateOTP();
-      const client = Sib.ApiClient.instance;
-      await Forgot.findOneAndUpdate(
+      await Otp.findOneAndUpdate(
         {
           user_id: usr[0]._id,
         },
         {
-          verification_string: otp,
+          otp,
           status: Constants.ACTIVE,
         },
-        { upsert: true, new: true }
+        { new: true }
       );
-      const mail = OtpMailTemplate(otp);
-      await Helper.sendEmail(
-        email.toLowerCase(),
-        mail,
-        "Otp to create Account"
-      );
-      return Helper.errorMsg(res, Constants.OTP_SENT, 401);
+      const messagebody = `Your signup otp is: ${otp}`;
+      await Helper.sendMessage("+919304242964", messagebody);
+      return Helper.errorMsg(res, Constants.OTP_SENT, 200);
     } else {
-      const result = await bcrypt.compare(password, usr[0].password);
-      if (!result) {
-        return Helper.warningMsg(res, Constants.INCORRECT_PASSWORD);
-      } else {
-        const result = {
-          first_name: usr[0].first_name,
-          last_name: usr[0].last_name,
-          role: usr[0].role,
-          email: usr[0].email,
-          phone_number: usr[0].phone_number,
-          country: usr[0].country,
-          country_code: usr[0].country_code,
-          state: usr[0].state,
-          state_code: usr[0].state_code,
-          city: usr[0].city,
-          zip_code: usr[0].zip_code,
-          my_network: usr[0].my_network,
-          blocked_user: usr[0].blocked_user,
-          followed_by: usr[0].followed_by,
-          profile_pic: usr[0].profile_pic,
-          cover_photo: usr[0].cover_photo,
-          school_name: usr[0].school_name,
-          institute_name: usr[0].institute_name,
-          school_id_number: usr[0].school_id_number,
-          gpa: usr[0].gpa,
-          sat_act_scores: usr[0].sat_act_scores,
-          position: usr[0].position,
-          years_of_experience: usr[0].years_of_experience,
-          linkedin_profile: usr[0].linkedin_profile,
-          unread_messages: usr[0].unread_messages,
-          about: usr[0].about,
-          token: authUser(usr[0]),
-        };
-        return Helper.successMsg(res, Constants.LOGIN_SUCCESS, result);
+      if (!socialMediaId) {
+        const result = await bcrypt.compare(password, usr[0].password);
+        if (!result) {
+          return Helper.warningMsg(res, Constants.INCORRECT_PASSWORD);
+        }
       }
+      const token = Helper.authUser(usr[0]);
+      await User.findByIdAndUpdate(usr[0]._id, { jwtToken: token });
+      const result = {
+        name: usr[0].name,
+        role: usr[0].role,
+        email: usr[0].email,
+        mobileNumber: usr[0].mobileNumber,
+        countryCode: usr[0].countryCode,
+        bio: usr[0].bio,
+        profilePic: usr[0].profilePic,
+        profession: usr[0].profession,
+        signUpType: usr[0].signUpType,
+        isOnline:usr[0].isOnline,
+        followers:usr[0].followers,
+        followings:usr[0].followings,
+        token,
+      };
+      return Helper.successMsg(res, Constants.LOGIN_SUCCESS, result);
     }
   } catch (err) {
     console.log(err);

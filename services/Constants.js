@@ -34,7 +34,9 @@ export const Constants = {
   DATA_NOT_UPDATED:"Error while updating data",
   DATA_NOT_DELETED:"Error while deleting data",
   INACTIVE_SIGNUP:"You are blocked please contact your administrator",
-  SOMETHING_WRONG:"Something went wrong!"
+  SOMETHING_WRONG:"Something went wrong!",
+  INCORRECT_PASSWORD:"Incorrect password",
+  INVALID_OTP:"Entered otp is incorrect"
   };
 
 export const ChatEventEnum = Object.freeze({
