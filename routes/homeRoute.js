@@ -3,6 +3,7 @@ import * as Controller from "../controllers/index.js";
 import {authenticate} from "../middleware/auth.js";
 const home = express.Router();
 
+home.get("/dashboard",authenticate,Controller.Home.getDashBoard);
 home.post("/create-category",authenticate,Controller.Home.createCategory);
 home.get("/get-categories",authenticate,Controller.Home.getCategory);
 home.put("/update-category",authenticate,Controller.Home.updateCategory);
@@ -11,6 +12,7 @@ home.post("/create-service",authenticate,Controller.Home.createService);
 home.get("/get-services",authenticate,Controller.Home.getServices);
 home.put("/update-service",authenticate,Controller.Home.updateService);
 home.delete("/delete-service",authenticate,Controller.Home.deleteService);
+home.post("/create-offer",authenticate,Controller.Home.createOffer);
 
 /** CREATE CATEGORY */
 /**

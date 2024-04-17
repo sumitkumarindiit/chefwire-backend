@@ -11,7 +11,6 @@ import Notification from "../models/notificationModel.js";
 import { userCommonAggregation } from "../services/userService.js";
 import mongoose from "mongoose";
 
-
 export const changePassword = async (req, res, next) => {
   try {
     if (
@@ -56,107 +55,22 @@ export const getUserProfile = async (req, res) => {
       Helper.validateRequest(validateUser.userIdSchemaOptional, req.query, res)
     )
       return;
-    const user_id = req.user._id;
-    const other_user_id = req.query.user_id;
-    const page = req.query.page || 1;
-    const limit = 10;
-    const match_id = other_user_id ? other_user_id : user_id;
-    const [users, post_count, request, other_users, post] = await Promise.all([
-      // User.findOne({ _id: user_id })
-      //   .populate("my_network.user_id", "_id first_name last_name profile_pic")
-      //   .populate(
-      //     "blocked_user.user_id",
-      //     "_id first_name last_name profile_pic"
-      //   ).populate("role","role")
-      //   .select("-__v -createdAt -updatedAt -status -email_verified -password"),
-      User.aggregate([{$match:{_id:new mongoose.Types.ObjectId(user_id)}},...userCommonAggregation("profile")]),
-      Post.countDocuments({ posted_by: match_id, status: Constants.ACTIVE }),
-      !other_user_id &&
-        Request.find({ to_user_id: user_id, status: Constants.ACTIVE })
-          .populate("from_user_id", "_id first_name last_name profile_pic ")
-          .then(async (rqst) => {
-            let obj;
-            const result = await Promise.all(
-              rqst.map(async (frnd) => {
-                const mutual_friends = await findMutualFriends(
-                  req.user._id,
-                  frnd.from_user_id
-                );
-                obj = {
-                  request: frnd,
-                  mutual_friends,
-                };
-                return obj;
-              })
-            );
-            return result;
-          }),
-      other_user_id &&
-        User.findOne({ _id: other_user_id })
-          .populate(
-            "my_network.user_id",
-            "_id first_name last_name profile_pic"
-          )
-          .populate("role", "_id role")
-          .populate("blocked_user", "_id first_name last_name profile_pic")
-          .select(
-            "-__v -createdAt -updatedAt -status -email_verified -password"
-          )
-          .lean(),
-      other_user_id &&
-        Post.find({ posted_by: other_user_id, status: Constants.ACTIVE })
-          .sort({ createdAt: -1 })
-          .skip((page - 1) * limit)
-          .limit(limit)
-          .populate("likes", "_id first_name last_name profile_pic")
-          .populate("shares", "_id first_name last_name profile_pic")
-          .select("-__v -createdAt -updatedAt -status -report")
-          .lean(),
+    const userId = req.user._id;
+    const otherUserId = req.query.userId;
+    const [users] = await Promise.all([
+      User.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(
+              otherUserId ? otherUserId : userId
+            ),
+          },
+        },
+        ...userCommonAggregation("profile"),
+      ]),
     ]);
 
-    let mutualFriends, result;
-    if (other_user_id) {
-      // const usersFriendIds = users.my_network.map((friend) =>{
-      //   return friend.user_id
-      // }
-      // );
-      // const otherUsersFriendIds = other_users.my_network.map((friend) =>
-      //   friend.user_id
-      // );
-      // console.log({usersFriendIds,otherUsersFriendIds})
-      // const mutualFriendIds = usersFriendIds.filter((id) =>
-      //   otherUsersFriendIds.includes(id)
-      // );
-      // mutualFriends = users.my_network.filter((friend) =>
-      //   mutualFriendIds.includes(friend._id.toString())
-      // );
-      mutualFriends = await findMutualFriends(user_id, other_user_id);
-      mutualFriends = await Promise.all(
-        mutualFriends.map(async (friend) => {
-          const result = await findMutualFriends(user_id, friend.user_id._id);
-          friend.user_id.mutual_friends = result ? result : [];
-          return friend;
-        })
-      );
-      const count = post.length;
-      result = {
-        user_details: other_users,
-        mutual_friends: mutualFriends,
-        posts: post,
-        // has_next_page: limit * page < count,
-        // next_page: page + 1,
-        // has_previous_page: page > 1,
-        // previous_page: page - 1,
-        // last_page: Math.ceil(count / limit),
-        // current_page: page,
-      };
-    }
-
-    return Helper.successMsg(
-      res,
-      Constants.DATA_GET,
-      other_user_id ? result : { users:users[0], post_count, request }
-    );
+    return Helper.successMsg(res, Constants.DATA_FETCHED, users[0]);
   } catch (err) {
     console.log(err);
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
@@ -268,4 +182,3 @@ export const deleteNotifications = async (req, res) => {
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
-

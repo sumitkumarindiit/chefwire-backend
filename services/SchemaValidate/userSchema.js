@@ -36,9 +36,7 @@ export const loginSchema = joi.object({
   }),
   socialMediaId:joi.string()
 });
-export const forgotSchema = joi.object({
-  email: joi.string().email().required(),
-});
+
 export const otpSchema = joi.object({
   email:joi.when("user_id", {
     is: joi.exist(),
@@ -58,22 +56,22 @@ export const verifyOtpSchema = joi.object({
   otp: joi.string().min(4).max(4).required(),
 });
 export const resetSchema = joi.object({
-  user_id: joi.string().hex().length(24).required(),
-  verification_string: joi.string().required(),
+  userId: joi.string().hex().length(24).required(),
+  otp: joi.string().required(),
   password: passwordSchema,
 });
 export const changePasswordSchema = joi.object({
-  old_password: passwordSchema,
-  new_password: passwordSchema,
+  oldPassword: passwordSchema,
+  newPassword: passwordSchema,
 });
 export const emailSchema = joi.object({
   email:joi.string().email().required()
 });
 export const userIdSchema = joi.object({
-  user_id: joi.string().hex().length(24).required(),
+  userId: joi.string().hex().length(24).required(),
 });
 export const userIdSchemaOptional = joi.object({
-  user_id: joi.string().hex().length(24),
+  userId: joi.string().hex().length(24),
 });
 export const userSearchQuery = joi.object({
   name: joi.string().allow(""),

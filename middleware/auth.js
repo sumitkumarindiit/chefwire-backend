@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.header("Authorization");
-    const device_token = req.header("device_token");
+    const deviceToken = req.header("deviceToken");
 
     if (!authHeader || !authHeader.startsWith("Bearer "))
       return Helper.errorMsg(res, Constants.INVALID_TOKEN, 401);
@@ -24,8 +24,8 @@ export const authenticate = async (req, res, next) => {
       if (usr[0].status !== Constants.ACTIVE) {
         return Helper.errorMsg(res, Constants.BLOCKED, 401);
       }
-      if (device_token && device_token !== usr[0].device_token) {
-        await User.findByIdAndUpdate(usr[0]._id, { device_token });
+      if (deviceToken && deviceToken !== usr[0].deviceToken) {
+        await User.findByIdAndUpdate(usr[0]._id, { deviceToken });
       }
       req.user = usr[0];
       next();

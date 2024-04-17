@@ -88,6 +88,7 @@ export const sendMessage = async (number,body) => {
     process.env.TWILIO_AUTH_TOKEN
   );
   try {
+    console.log(number)
     await client.messages.create({
       body: body,
       from: '+12055390892',

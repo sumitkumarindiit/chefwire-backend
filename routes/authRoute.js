@@ -1,12 +1,13 @@
 import express from "express";
 import * as Controller from "../controllers/index.js";
+import { authenticate } from "../middleware/auth.js";
 
 const auth = express.Router();
 
 
 auth.post("/signup", Controller.Auth.signup);
-auth.post("/login", Controller.Auth.signin);
-auth.patch("/logout", Controller.Auth.logout);
+auth.post("/signin", Controller.Auth.signin);
+auth.patch("/logout",authenticate, Controller.Auth.logout);
 auth.post("/forgot-password", Controller.Auth.forgotPassword);
 auth.post("/reset-password", Controller.Auth.resetPassword);
 auth.patch("/resend-otp", Controller.Auth.resendOtp);

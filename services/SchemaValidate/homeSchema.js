@@ -3,7 +3,7 @@ import { Constants } from "../Constants.js";
 
 export const categorySchema = joi.object({
   name: joi.string().min(2).max(100).required(),
-  icon:joi.string().required(),
+  icon:joi.binary().required(),
 });
 export const updateCategorySchema = joi.object({
   id: joi.string().hex().length(24).required(),
@@ -55,4 +55,14 @@ export const idSchema = joi.object({
 })
 export const optionalIdSchema = joi.object({
   id:joi.string().hex().length(24)
+})
+export const offerSchema = joi.object({
+  couponId:joi.string().hex().length(24).required(),
+  typeId:joi.string().hex().length(24),
+  type:joi.string().valid("RESTAURANT", "DINEIN", "CATERER", "FOOD", "GLOBAL", "QUEST").required(),
+  category:joi.string().valid("RESTAURANT", "DINEIN", "CATERER", "FOOD", "QUEST").required(),
+  name:joi.string().allow(""),
+  banner:joi.binary().required(),
+  validTill:joi.date(),
+  users:joi.array(),
 })

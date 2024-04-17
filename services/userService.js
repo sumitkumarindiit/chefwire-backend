@@ -108,10 +108,9 @@ export const imageModeration = async (images) => {
 };
 export const userCommonAggregation = (profile) => {
   let project = {
-    __v:0,
-    updatedAt:0,
-    createdAt:0,
- 
+    __v: 0,
+    updatedAt: 0,
+    createdAt: 0
   };
   if (profile) {
     project = {
@@ -121,6 +120,10 @@ export const userCommonAggregation = (profile) => {
       status: 0,
       mobileVerified: 0,
       deviceToken: 0,
+      jwtToken:0,
+      socialMediaId:0,
+      signupType:0,
+      otpVerified:0,
       password: 0,
     };
   }
@@ -144,6 +147,28 @@ export const userCommonAggregation = (profile) => {
       $unwind: {
         path: "$role",
         preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "addresses",
+        localField: "_id",
+        foreignField: "addressId",
+        as: "addresses",
+        pipeline: [
+          {
+            $project: {
+              __v: 0,
+              createdAt:0,
+              updatedAt:0
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        role: "$role.role",
       },
     },
     {

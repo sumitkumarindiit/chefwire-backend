@@ -17,6 +17,9 @@ export const Constants = {
   OTP_TYPE_SIGNUP:"SIGNUP",
   OTP_TYPE_FORGOT:"FORGOT",
   OTP_SENT_MOBILE:"Otp sent successfully to your mobile number",
+  INVALID_OTP:"Entered otp is incorrect",
+  OTP_EXPIRED:"Otp is expired",
+  OTP_VERIFIED:"Otp verified successfully",
   BLOCKED:"BLOCKED",
   LOGOUT:"Logout Successful",
   LOGIN:"Login Successful",
@@ -31,12 +34,17 @@ export const Constants = {
   DATA_DELETED:"Data deleted successfully",
   DATA_NOT_FETCHED:"Error while fetching data",
   DATA_NOT_CREATED:"Error while creating data",
-  DATA_NOT_UPDATED:"Error while updating data",
+  DATA_NOT_CREATED:"Error while creating data",
+  DATA_EXIST:"Data already available with this name",
   DATA_NOT_DELETED:"Error while deleting data",
   INACTIVE_SIGNUP:"You are blocked please contact your administrator",
   SOMETHING_WRONG:"Something went wrong!",
   INCORRECT_PASSWORD:"Incorrect password",
-  INVALID_OTP:"Entered otp is incorrect"
+  PASSWORD_CHANGED:"Password changed successfully",
+  INVALID_TOKEN:"Please provide valid authentication token",
+  INVALID_ID:"Please provide valid ID",
+  ADD_ICON:"Please add a icon"
+  
   };
 
 export const ChatEventEnum = Object.freeze({

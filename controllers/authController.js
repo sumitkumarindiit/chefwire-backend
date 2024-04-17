@@ -1,13 +1,10 @@
 import User from "../models/userModel.js";
 import Otp from "../models/otpModel.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import * as Helper from "../services/HelperFunction.js";
 import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants } from "../services/Constants.js";
-import Sib from "sib-api-v3-sdk";
 import { userCommonAggregation } from "../services/userService.js";
-import { OtpMailTemplate, WelcomeEmail } from "../services/emailTemplate.js";
 import Role from "../models/roleAndPermissionModel.js";
 
 export const signup = async (req, res) => {
@@ -17,7 +14,10 @@ export const signup = async (req, res) => {
     const { password, socialMediaId, ...restBody } = req.body;
     const otp = Helper.generateOTP();
     if (socialMediaId) {
-      const registedUser = await User.findOne({ socialMediaId }).lean();
+      const registedUser = await User.findOne({
+        socialMediaId,
+        email: restBody.email.toLowerCase(),
+      }).lean();
       if (registedUser) {
         registedUser.token = Helper.authUser(registedUser);
         return Helper.successMsg(res, Constants.LOGIN, registedUser);
@@ -43,15 +43,13 @@ export const signup = async (req, res) => {
     if (emailRegistered) {
       if (emailRegistered.status === Constants.INACTIVE) {
         return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP, {});
-      } else {
-        return Helper.errorMsg(res, Constants.EMAIL_EXIST, 409);
       }
+      return Helper.errorMsg(res, Constants.EMAIL_EXIST, 409);
     } else if (mobileRegistered) {
       if (mobileRegistered.status === Constants.INACTIVE) {
         return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP, {});
-      } else {
-        return Helper.errorMsg(res, Constants.MOBILE_EXIST, 409);
       }
+      return Helper.errorMsg(res, Constants.MOBILE_EXIST, 409);
     } else {
       const hashedPwd = await bcrypt.hash(password, 10);
       const user = await User.create({
@@ -73,19 +71,6 @@ export const signup = async (req, res) => {
     return Helper.errorMsg(res, err, 500);
   }
 };
-export const logout = async (req, res) => {
-  try {
-    const result = await User.findByIdAndUpdate(
-      req.user._id,
-      { deviceToken: null },
-      { new: true }
-    );
-    return Helper.successMsg(res, Constants.LOGOUT, {});
-  } catch (err) {
-    console.error(err);
-    return Helper.errorMsg(res, err, 500);
-  }
-};
 export const verifyOTP = async (req, res) => {
   try {
     if (Helper.validateRequest(validateUser.otpSchema, req.body, res)) return;
@@ -99,10 +84,26 @@ export const verifyOTP = async (req, res) => {
           .lean();
     if (user) {
       if (type === "SIGNUP") {
+        const isExpired = await Otp.findOne({ userId: user._id });
+        if (!isExpired) {
+          return Helper.warningMsg(res, Constants.INVALID_OTP);
+        }
+        const currentTime = Date.now();
+        const checkTime = new Date(isExpired?.updatedAt);
+        if (currentTime - checkTime.getTime() > 15 * 60 * 1000) {
+          await Otp.findOneAndUpdate(
+            {
+              userId: user._id,
+            },
+            { status: Constants.INACTIVE, isActive: false }
+          );
+          return Helper.errorMsg(res, Constants.OTP_EXPIRED, 200);
+        }
         const result = await Otp.findOneAndUpdate(
           {
             userId: user._id,
             otp,
+            type: Constants.OTP_TYPE_SIGNUP,
             status: Constants.ACTIVE,
           },
           { status: Constants.INACTIVE }
@@ -110,23 +111,38 @@ export const verifyOTP = async (req, res) => {
         if (!result) {
           return Helper.warningMsg(res, Constants.INVALID_OTP);
         }
-        const currentTime = new Date.now();
-        const checkTime = result?.updatedAt
-        
         await User.findByIdAndUpdate(user._id, { otpVerified: true });
-        return Helper.successMsg(res, Constants.SIGNUP_SUCCESS, user);
-      } else if(type==="FORGOT") {
-        const result = await Forgot.findOneAndUpdate(
+        return Helper.successMsg(res, Constants.SIGNUP, user);
+      } else if (type === "FORGOT") {
+        const isExpired = await Otp.findOne({ userId: user._id });
+        if (!isExpired) {
+          return Helper.warningMsg(res, Constants.INVALID_OTP);
+        }
+        const currentTime = Date.now();
+        const checkTime = new Date(isExpired?.updatedAt);
+        if (currentTime - checkTime.getTime() > 15 * 60 * 1000) {
+          await Otp.findOneAndUpdate(
+            {
+              userId: user._id,
+            },
+            { status: Constants.INACTIVE, isActive: false }
+          );
+          return Helper.errorMsg(res, Constants.OTP_EXPIRED, 200);
+        }
+        const result = await Otp.findOneAndUpdate(
           {
-            user_id: user._id,
-            verification_string: otp,
+            userId: user._id,
+            otp,
+            type: Constants.OTP_TYPE_FORGOT,
             status: Constants.ACTIVE,
           },
-          { status: Constants.INACTIVE, is_active: true }
+          { status: Constants.INACTIVE, isActive: true }
         );
+
         if (!result) {
           return Helper.warningMsg(res, Constants.INVALID_OTP);
         }
+
         return Helper.successMsg(res, Constants.OTP_VERIFIED, {});
       }
     } else {
@@ -137,22 +153,22 @@ export const verifyOTP = async (req, res) => {
     return Helper.errorMsg(res, err, 500);
   }
 };
-export const resendOtp = async (req, res, next) => {
+export const resendOtp = async (req, res) => {
   try {
     if (Helper.validateRequest(validateUser.userIdSchema, req.body, res))
       return;
-    const { user_id } = req.body;
-    const user = await User.findById(user_id);
+    const {userId } = req.body;
+    const user = await User.findById(userId);
     if (user) {
       const otp = Helper.generateOTP();
-      const result = await Forgot.findOneAndUpdate(
-        { user_id: user._id },
-        { verification_string: otp }
+      const result = await Otp.findOneAndUpdate(
+        { userId: user._id },
+        { otp }
       );
-      const mail = OtpMailTemplate(otp);
-      await Helper.sendEmail(user.email, mail, "Login OTP");
+      const messagebody = `Your ${result.type} otp is: ${otp}`;
+      await Helper.sendMessage("+919304242964", messagebody);
       if (result) {
-        return Helper.successMsg(res, Constants.OTP_SENT, {});
+        return Helper.successMsg(res, Constants.OTP_SENT_MOBILE, {});
       } else {
         return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 404);
       }
@@ -170,7 +186,7 @@ export const signin = async (req, res) => {
     if (Helper.validateRequest(validateUser.loginSchema, req.body, res)) return;
     const { email, password, socialMediaId } = req.body;
     let match = {
-      emai: email.toLowerCase(),
+      email: email.toLowerCase(),
     };
     if (socialMediaId) {
       match = {
@@ -186,22 +202,22 @@ export const signin = async (req, res) => {
     if (!usr[0]) {
       return Helper.warningMsg(res, Constants.WRONG_EMAIL);
     } else if (usr[0].status !== Constants.ACTIVE) {
-      return Helper.errorMsg(res, Constants.BLOCKED, 200);
+      return Helper.warningMsg(res, Constants.BLOCKED);
     } else if (!usr[0].otpVerified) {
       const otp = Helper.generateOTP();
       await Otp.findOneAndUpdate(
         {
-          user_id: usr[0]._id,
+          userId: usr[0]._id,
         },
         {
           otp,
           status: Constants.ACTIVE,
         },
-        { new: true }
+        { new: true, upsert: true }
       );
       const messagebody = `Your signup otp is: ${otp}`;
       await Helper.sendMessage("+919304242964", messagebody);
-      return Helper.errorMsg(res, Constants.OTP_SENT, 200);
+      return Helper.errorMsg(res, Constants.OTP_SENT_MOBILE, 200);
     } else {
       if (!socialMediaId) {
         const result = await bcrypt.compare(password, usr[0].password);
@@ -221,9 +237,9 @@ export const signin = async (req, res) => {
         profilePic: usr[0].profilePic,
         profession: usr[0].profession,
         signUpType: usr[0].signUpType,
-        isOnline:usr[0].isOnline,
-        followers:usr[0].followers,
-        followings:usr[0].followings,
+        isOnline: usr[0].isOnline,
+        followers: usr[0].followers,
+        followings: usr[0].followings,
         token,
       };
       return Helper.successMsg(res, Constants.LOGIN_SUCCESS, result);
@@ -237,47 +253,28 @@ export const signin = async (req, res) => {
 };
 export const forgotPassword = async (req, res) => {
   try {
-    if (Helper.validateRequest(validateUser.forgotSchema, req.body, res))
-      return;
+    if (Helper.validateRequest(validateUser.emailSchema, req.body, res)) return;
     const { email } = req.body;
     const otp = Helper.generateOTP();
     const user = await User.findOne({ email: email.toLowerCase() });
-    if (user) {
-      const client = Sib.ApiClient.instance;
-      var apiKey = client.authentications["api-key"];
-      apiKey.apiKey = process.env.EMAIL_API_KEY;
-
-      const tranEmailApi = new Sib.TransactionalEmailsApi();
-      const sender = {
-        email: "sumitkumarindiit@gmail.com",
-        name: "BriddG",
-      };
-      const receivers = [
-        {
-          email: user.email,
-        },
-      ];
-      await Promise.all([
-        tranEmailApi.sendTransacEmail({
-          sender,
-          to: receivers,
-          subject: "Reset Password Link",
-          htmlContent: `<p>Your One-Time Password (OTP) is: <strong>${otp}</strong></p>`,
-        }),
-        Forgot.findOneAndUpdate(
-          { user_id: user._id },
-          {
-            verification_string: otp,
-            user_id: user._id,
-            status: Constants.ACTIVE,
-          },
-          { upsert: true, new: true }
-        ),
-      ]);
-      return Helper.successMsg(res, Constants.EMAIL_SENT, user);
-    } else {
-      return Helper.errorMsg(res, Constants.EMAIL_NOT_EXIST, 404);
+    if (!user) {
+      return Helper.errorMsg(res, Constants.WRONG_EMAIL, 404);
     }
+    if (!user.otpVerified) {
+      return Helper.errorMsg(res, "Please login to verify otp", 404);
+    }
+
+    const otpRes = await Otp.findOneAndUpdate(
+      {
+        userId: user._id,
+      },
+      { otp, status: Constants.ACTIVE, type: Constants.OTP_TYPE_FORGOT },
+      { upsert: true, new: true }
+    );
+    if (!otpRes) return Helper.warningMsg(res, Constants.SOMETHING_WRONG);
+    const messagebody = `Your forgot password otp is: ${otp}`;
+    await Helper.sendMessage("+919304242964", messagebody);
+    return Helper.successMsg(res, Constants.OTP_SENT_MOBILE, user);
   } catch (err) {
     console.log(err);
     return Helper.errorMsg(res, err, 500);
@@ -287,24 +284,49 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     if (Helper.validateRequest(validateUser.resetSchema, req.body, res)) return;
-    const { verification_string, user_id, password } = req.body;
+    const { otp, userId, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const forgot = await Forgot.findOneAndUpdate(
-      {
-        verification_string,
-        user_id,
-        status: Constants.INACTIVE,
-        is_active: true,
-      },
-      { is_active: false }
-    );
-    if (!forgot) return Helper.errorMsg(res, Constants.INVALID_OTP, 404);
-    await User.findByIdAndUpdate(forgot.user_id, {
+    const isExpired=Otp.findOne({ userId });
+    const currentTime = Date.now();
+    const checkTime = new Date(isExpired?.updatedAt);
+    if (currentTime - checkTime.getTime() > 15 * 60 * 1000) {
+      await Otp.findOneAndUpdate(
+        {
+          userId
+        },
+        { isActive: false, status:Constants.INACTIVE }
+      );
+      return Helper.errorMsg(res, Constants.OTP_EXPIRED, 200);
+    }
+    const result = await Otp.findOneAndUpdate(
+        {
+          otp,
+          userId,
+          status: Constants.INACTIVE,
+          isActive: true,
+        },
+        { isActive: false }
+      );
+    if (!result) return Helper.errorMsg(res, Constants.INVALID_OTP, 200);
+    await User.findByIdAndUpdate(result.userId, {
       password: hashedPassword,
     });
     return Helper.successMsg(res, Constants.PASSWORD_CHANGED, {});
   } catch (err) {
     console.log(err);
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const logout = async (req, res) => {
+  try {
+    const result = await User.findByIdAndUpdate(
+      req.user._id,
+      { deviceToken: null, isOnline: false },
+      { new: true }
+    );
+    return Helper.successMsg(res, Constants.LOGOUT, {});
+  } catch (err) {
+    console.error(err);
+    return Helper.errorMsg(res, err, 500);
   }
 };
