@@ -285,3 +285,42 @@ export const createOffer = async (req, res, next) => {
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
+export const createQuest = async (req, res, next) => {
+  try {
+    const file = req.files?.banner;
+    if (
+      Helper.validateRequest(
+        validatePost.offerSchema,
+        { ...req.body, banner: file.data },
+        res
+      )
+    )
+      return;
+    const isCouponAvailable = await Coupon.findOne({
+      _id: req.body.couponId,
+      validTill: { $gte: req.body.validTill },
+    });
+    if (!isCouponAvailable) {
+      return Helper.warningMsg(
+        res,
+        "Coupon validity should be more or eqaul to offer validity"
+      );
+    }
+    const filenamePrefix = Date.now();
+    const extension = file.name.split(".").pop();
+    const filename = filenamePrefix + "." + extension;
+    await uploadToS3(file.data, filename, file.mimetype);
+    req.body.banner = filename;
+    const result = await Offer.create(req.body);
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_CREATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 404);
+    }
+    await Logs(req, Constants.DATA_CREATED, next);
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+  } catch (err) {
+    console.log("Errors", err);
+    Logs(req, Constants.SOMETHING_WRONG, next);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};

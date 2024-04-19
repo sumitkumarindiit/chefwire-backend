@@ -66,3 +66,16 @@ export const offerSchema = joi.object({
   validTill:joi.date(),
   users:joi.array(),
 })
+export const questSchema = joi.object({
+  couponId:joi.string().hex().length(24).required(),
+  questTitle:joi.string().required(),
+  rules:joi.array().items(joi.string()),
+  validTill:joi.date(),
+})
+export const updateQuestSchema = joi.object({
+  couponId:joi.string().hex().length(24),
+  questTitle:joi.string(),
+  rules:joi.array().items(joi.string()),
+  validTill:joi.date(),
+  
+})

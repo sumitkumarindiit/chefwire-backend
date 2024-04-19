@@ -20,6 +20,33 @@ export const signupSchema = joi.object({
   password: passwordSchema,
   socialMediaId:joi.string()
 });
+export const merchantSignupSchema = joi.object({
+  name: joi.string().required(),
+  email: joi.string().email().required(),
+  countryCode: joi.string().required(),
+  mobileNumber: joi.string().min(10).max(10).required(),
+  password: passwordSchema,
+  openingHours:joi.array().items(joi.string().required()),
+  profilePic:joi.binary().allow("",null),
+  coverPic:joi.binary().allow("",null),
+  location:joi.string(),
+  bio:joi.string(),
+  title:joi.string().required()
+});
+export const updatemerchantSchema = joi.object({
+  name: joi.string(),
+  email: joi.string().email(),
+  countryCode: joi.string(),
+  mobileNumber: joi.string().min(10).max(10),
+  openingHours:joi.array().items(joi.string()),
+  services:joi.array(),
+  categories:joi.array().items(joi.string()),
+  profilePic:joi.binary().allow("",null),
+  coverPic:joi.binary().allow("",null),
+  location:joi.string(),
+  bio:joi.string(),
+  title:joi.string()
+});
 export const loginSchema = joi.object({
   email: joi.string().email().when("socialMediaId",{
     is:joi.exist(),

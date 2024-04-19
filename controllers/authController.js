@@ -6,6 +6,7 @@ import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants } from "../services/Constants.js";
 import { userCommonAggregation } from "../services/userService.js";
 import Role from "../models/roleAndPermissionModel.js";
+import uploadToS3 from "../services/s3Services.js";
 
 export const signup = async (req, res) => {
   try {
@@ -157,14 +158,11 @@ export const resendOtp = async (req, res) => {
   try {
     if (Helper.validateRequest(validateUser.userIdSchema, req.body, res))
       return;
-    const {userId } = req.body;
+    const { userId } = req.body;
     const user = await User.findById(userId);
     if (user) {
       const otp = Helper.generateOTP();
-      const result = await Otp.findOneAndUpdate(
-        { userId: user._id },
-        { otp }
-      );
+      const result = await Otp.findOneAndUpdate({ userId: user._id }, { otp });
       const messagebody = `Your ${result.type} otp is: ${otp}`;
       await Helper.sendMessage("+919304242964", messagebody);
       if (result) {
@@ -286,27 +284,27 @@ export const resetPassword = async (req, res) => {
     if (Helper.validateRequest(validateUser.resetSchema, req.body, res)) return;
     const { otp, userId, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const isExpired=Otp.findOne({ userId });
+    const isExpired = Otp.findOne({ userId });
     const currentTime = Date.now();
     const checkTime = new Date(isExpired?.updatedAt);
     if (currentTime - checkTime.getTime() > 15 * 60 * 1000) {
       await Otp.findOneAndUpdate(
         {
-          userId
+          userId,
         },
-        { isActive: false, status:Constants.INACTIVE }
+        { isActive: false, status: Constants.INACTIVE }
       );
       return Helper.errorMsg(res, Constants.OTP_EXPIRED, 200);
     }
     const result = await Otp.findOneAndUpdate(
-        {
-          otp,
-          userId,
-          status: Constants.INACTIVE,
-          isActive: true,
-        },
-        { isActive: false }
-      );
+      {
+        otp,
+        userId,
+        status: Constants.INACTIVE,
+        isActive: true,
+      },
+      { isActive: false }
+    );
     if (!result) return Helper.errorMsg(res, Constants.INVALID_OTP, 200);
     await User.findByIdAndUpdate(result.userId, {
       password: hashedPassword,
@@ -327,6 +325,133 @@ export const logout = async (req, res) => {
     return Helper.successMsg(res, Constants.LOGOUT, {});
   } catch (err) {
     console.error(err);
+    return Helper.errorMsg(res, err, 500);
+  }
+};
+export const signupMerchant = async (req, res) => {
+  try {
+    const { profilePic, coverPic } = req.files;
+
+    if (
+      Helper.validateRequest(
+        validateUser.merchantSignupSchema,
+        {
+          ...req.body,
+          profilePic: profilePic ? profilePic.data : null,
+          coverPic: coverPic ? coverPic.data : null,
+        },
+        res
+      )
+    )
+      return;
+
+    const { password, ...restBody } = req.body;
+    if (profilePic) {
+      const filenamePrefix = Date.now();
+      const extension = profilePic.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(profilePic.data, filename, profilePic.mimetype);
+      restBody.profilePic = filename;
+    }
+    if (coverPic) {
+      const filenamePrefix = Date.now();
+      const extension = coverPic.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(coverPic.data, filename, coverPic.mimetype);
+      restBody.coverPic = filename;
+    }
+    // const otp = Helper.generateOTP();
+
+    let [emailRegistered, mobileRegistered, userRole] = await Promise.all([
+      User.findOne({
+        email: restBody.email?.toLowerCase(),
+      }),
+      User.findOne({ mobileNumber: restBody.mobileNumber }),
+      Role.findOne({ role: "merchant" }),
+    ]);
+    if (!userRole) {
+      const role = await Role.create({ role: "merchant" });
+      userRole = role;
+    }
+    if (emailRegistered) {
+      if (emailRegistered.status === Constants.INACTIVE) {
+        return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP, {});
+      }
+      return Helper.errorMsg(res, Constants.EMAIL_EXIST, 409);
+    } else if (mobileRegistered) {
+      if (mobileRegistered.status === Constants.INACTIVE) {
+        return Helper.warningMsg(res, Constants.INACTIVE_SIGNUP, {});
+      }
+      return Helper.errorMsg(res, Constants.MOBILE_EXIST, 409);
+    } else {
+      const hashedPwd = await bcrypt.hash(password, 10);
+      const user = await User.create({
+        ...restBody,
+        password: hashedPwd,
+        role: userRole._id,
+      });
+      // const otpRes = await Otp.create({
+      //   userId: user._id,
+      //   otp,
+      // });
+      // if (!otpRes) return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 404);
+      // const messagebody = `Your signup otp is: ${otp}`;
+      // await Helper.sendMessage("+919304242964", messagebody);
+      return Helper.successMsg(res, Constants.SIGNUP, user);
+    }
+  } catch (err) {
+    console.log(err);
+    return Helper.errorMsg(res, err, 500);
+  }
+};
+export const updateMerchantProfile = async (req, res) => {
+  try {
+    const profilePic = req.files?.profilePic;
+    const coverPic = req.files?.coverPic;
+    const { openingHours, categories, services } = req.body;
+ 
+    if (openingHours) {
+      req.body.openingHours = JSON.parse(openingHours);
+    }
+    if (categories) {
+      req.body.categories = JSON.parse(categories);
+    }
+    if (services) {
+      req.body.services = JSON.parse(services);
+    }
+
+    if (
+      Helper.validateRequest(
+        validateUser.updatemerchantSchema,
+        {
+          ...req.body,
+          profilePic: profilePic ? profilePic.data : null,
+          coverPic: coverPic ? coverPic.data : null,
+        },
+        res
+      )
+    )
+      return;
+    if (profilePic) {
+      const filenamePrefix = Date.now();
+      const extension = profilePic.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(profilePic.data, filename, profilePic.mimetype);
+      restBody.profilePic = filename;
+    }
+    if (coverPic) {
+      const filenamePrefix = Date.now();
+      const extension = coverPic.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(coverPic.data, filename, coverPic.mimetype);
+      restBody.coverPic = filename;
+    }
+    
+      const user = await User.findByIdAndUpdate("662259c409e94c8b62877552",req.body,{new:true});
+      return Helper.successMsg(res, Constants.DATA_UPDATED, user);
+    
+  } catch (err) {
+    console.log(err);
     return Helper.errorMsg(res, err, 500);
   }
 };

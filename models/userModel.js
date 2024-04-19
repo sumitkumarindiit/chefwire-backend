@@ -16,6 +16,11 @@ const userSchema = new Schema(
       trim: true,
       required: true,
     },
+    title: {
+      type: String,
+      lowercase: true,
+      default: null,
+    },
     email: {
       type: String,
       lowercase: true,
@@ -26,6 +31,18 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
+    coverPic: {
+      type: String,
+      default: null,
+    },
+    openingHours: [String],
+    categories: [String],
+    services: [{
+      type: Schema.Types.ObjectId,
+      ref: "Service",
+      index:true
+    }],
+    services: [],
     profession: {
       type: String,
       default: null,
@@ -33,6 +50,7 @@ const userSchema = new Schema(
     mobileNumber: {
       type: String,
       required: true,
+      index: true,
     },
     countryCode: {
       type: String,
@@ -86,6 +104,7 @@ const userSchema = new Schema(
         time: { type: Date, default: Date.now() },
       },
     ],
+    
     status: {
       type: String,
       enum: [Constants.ACTIVE, Constants.INACTIVE],
