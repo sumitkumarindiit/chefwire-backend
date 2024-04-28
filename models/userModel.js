@@ -31,18 +31,31 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // Longitude first, then Latitude
+        default: [],
+        index: "2dsphere",
+      },
+    },
     coverPic: {
       type: String,
       default: null,
     },
     openingHours: [String],
     categories: [String],
-    services: [{
-      type: Schema.Types.ObjectId,
-      ref: "Service",
-      index:true
-    }],
-    services: [],
+    services: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Service",
+        index: true,
+      },
+    ],
     profession: {
       type: String,
       default: null,
@@ -104,7 +117,7 @@ const userSchema = new Schema(
         time: { type: Date, default: Date.now() },
       },
     ],
-    
+
     status: {
       type: String,
       enum: [Constants.ACTIVE, Constants.INACTIVE],

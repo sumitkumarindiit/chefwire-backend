@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Constants } from "../services/Constants";
+import { Constants } from "../services/Constants.js";
 
 const Schema = mongoose.Schema;
 const questSchema = new Schema({

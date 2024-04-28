@@ -110,7 +110,7 @@ export const userCommonAggregation = (profile) => {
   let project = {
     __v: 0,
     updatedAt: 0,
-    createdAt: 0
+    createdAt: 0,
   };
   if (profile) {
     project = {
@@ -120,10 +120,10 @@ export const userCommonAggregation = (profile) => {
       status: 0,
       mobileVerified: 0,
       deviceToken: 0,
-      jwtToken:0,
-      socialMediaId:0,
-      signupType:0,
-      otpVerified:0,
+      jwtToken: 0,
+      socialMediaId: 0,
+      signupType: 0,
+      otpVerified: 0,
       password: 0,
     };
   }
@@ -154,13 +154,101 @@ export const userCommonAggregation = (profile) => {
         from: "addresses",
         localField: "_id",
         foreignField: "addressId",
-        as: "addresses",
+        as: "currentAddress",
+        pipeline: [
+          {
+            $match: {
+              addressType: { $in: ["CURRENT", "RESTAURANT"] },
+            },
+          },
+          {
+            $project: {
+              __v: 0,
+              addressId: 0,
+              createdAt: 0,
+              updatedAt: 0,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$currentAddress",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $addFields: {
+        role: "$role.role",
+      },
+    },
+    {
+      $project: project,
+    },
+  ];
+};
+export const merchantCommonAggregation = (profile) => {
+  const project = {
+    __v: 0,
+    createdAt: 0,
+    updatedAt: 0,
+    status: 0,
+    mobileVerified: 0,
+    deviceToken: 0,
+    jwtToken: 0,
+    socialMediaId: 0,
+    signupType: 0,
+    otpVerified: 0,
+    password: 0,
+  };
+
+  return [
+    {
+      $lookup: {
+        from: "roles",
+        localField: "role",
+        foreignField: "_id",
+        as: "role",
         pipeline: [
           {
             $project: {
               __v: 0,
-              createdAt:0,
-              updatedAt:0
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$role",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $addFields: {
+        role: "$role.role",
+      },
+    },
+    {
+      $match: {
+        role: "merchant",
+      },
+    },
+    {
+      $lookup: {
+        from: "services",
+        localField: "services",
+        foreignField: "_id",
+        as: "services",
+        pipeline: [
+          {
+            $project: {
+              __v: 0,
+              updatedAt: 0,
+              createdAt: 0,
+              icon: 0,
+              _id: 0,
             },
           },
         ],
@@ -168,8 +256,48 @@ export const userCommonAggregation = (profile) => {
     },
     {
       $addFields: {
-        role: "$role.role",
+        services: "$services.name",
       },
+    },
+    {
+      $lookup: {
+        from: "reviews",
+        localField: "_id",
+        foreignField: "reviewedId",
+        as: "reviews",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "userId",
+              foreignField: "_id",
+              as: "reviewedBy",
+              pipeline: [
+                {
+                  $project: {
+                    name: 1,
+                    profilePic: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              __v: 0,
+              updatedAt: 0,
+              reviewedId: 0,
+              reviewType: 0,
+              userId:0
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields:{
+        rating:{$avg:"$reviews.rating"}
+      }
     },
     {
       $project: project,

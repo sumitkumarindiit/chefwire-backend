@@ -4,15 +4,16 @@ import {authenticate} from "../middleware/auth.js";
 const home = express.Router();
 
 home.get("/dashboard",authenticate,Controller.Home.getDashBoard);
-home.post("/create-category",authenticate,Controller.Home.createCategory);
+home.post("/create-category",authenticate,Controller.Admin.createCategory);
 home.get("/get-categories",authenticate,Controller.Home.getCategory);
-home.put("/update-category",authenticate,Controller.Home.updateCategory);
-home.delete("/delete-category",authenticate,Controller.Home.deleteCategory);
-home.post("/create-service",authenticate,Controller.Home.createService);
+home.put("/update-category",authenticate,Controller.Admin.updateCategory);
+home.delete("/delete-category",authenticate,Controller.Admin.deleteCategory);
+home.post("/create-service",authenticate,Controller.Admin.createService);
 home.get("/get-services",authenticate,Controller.Home.getServices);
-home.put("/update-service",authenticate,Controller.Home.updateService);
-home.delete("/delete-service",authenticate,Controller.Home.deleteService);
-home.post("/create-offer",authenticate,Controller.Home.createOffer);
+home.put("/update-service",authenticate,Controller.Admin.updateService);
+home.delete("/delete-service",authenticate,Controller.Admin.deleteService);
+home.post("/create-offer",authenticate,Controller.Admin.createOffer);
+home.get("/get-restaurants",authenticate,Controller.Merchant.getRestaurants);
 
 /** CREATE CATEGORY */
 /**

@@ -226,6 +226,7 @@ export const signin = async (req, res) => {
       const token = Helper.authUser(usr[0]);
       await User.findByIdAndUpdate(usr[0]._id, { jwtToken: token });
       const result = {
+        _id:usr[0]._id,
         name: usr[0].name,
         role: usr[0].role,
         email: usr[0].email,
@@ -238,6 +239,7 @@ export const signin = async (req, res) => {
         isOnline: usr[0].isOnline,
         followers: usr[0].followers,
         followings: usr[0].followings,
+        currentAddress:usr[0].currentAddress,
         token,
       };
       return Helper.successMsg(res, Constants.LOGIN_SUCCESS, result);

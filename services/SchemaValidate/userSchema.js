@@ -18,7 +18,7 @@ export const signupSchema = joi.object({
   countryCode: joi.string().required(),
   mobileNumber: joi.string().min(10).max(10).required(),
   password: passwordSchema,
-  socialMediaId:joi.string()
+  socialMediaId: joi.string(),
 });
 export const merchantSignupSchema = joi.object({
   name: joi.string().required(),
@@ -26,59 +26,86 @@ export const merchantSignupSchema = joi.object({
   countryCode: joi.string().required(),
   mobileNumber: joi.string().min(10).max(10).required(),
   password: passwordSchema,
-  openingHours:joi.array().items(joi.string().required()),
-  profilePic:joi.binary().allow("",null),
-  coverPic:joi.binary().allow("",null),
-  location:joi.string(),
-  bio:joi.string(),
-  title:joi.string().required()
+  openingHours: joi.array().items(joi.string().required()),
+  profilePic: joi.binary().allow("", null),
+  coverPic: joi.binary().allow("", null),
+  location: joi
+    .object({
+      apartmentNo: joi.number(),
+      street: joi.string(),
+      landMark: joi.string(),
+      city: joi.string(),
+      zipCode: joi.string(),
+      country: joi.string(),
+      coordinates: joi.array().items(joi.number()).required(),
+    })
+    .required(),
+  bio: joi.string(),
+  title: joi.string().required(),
 });
 export const updatemerchantSchema = joi.object({
+  merchant_id: joi.string().hex().length(24).required(),
   name: joi.string(),
   email: joi.string().email(),
   countryCode: joi.string(),
   mobileNumber: joi.string().min(10).max(10),
-  openingHours:joi.array().items(joi.string()),
-  services:joi.array(),
-  categories:joi.array().items(joi.string()),
-  profilePic:joi.binary().allow("",null),
-  coverPic:joi.binary().allow("",null),
-  location:joi.string(),
-  bio:joi.string(),
-  title:joi.string()
+  openingHours: joi.array().items(joi.string()),
+  services: joi.array(),
+  categories: joi.array().items(joi.string()),
+  profilePic: joi.binary().allow("", null),
+  coverPic: joi.binary().allow("", null),
+  location: joi.object({
+    apartmentNo: joi.number(),
+    street: joi.string(),
+    landMark: joi.string(),
+    city: joi.string(),
+    zipCode: joi.string(),
+    country: joi.string(),
+    coordinates: joi.array().items(joi.number()),
+  }),
+  bio: joi.string(),
+  title: joi.string(),
 });
+export const getmerchantSchema = joi.object({
+  restaurantId: joi.string().hex().length(24),
+  sort:joi.string(),
+  rating:joi.string(),
+  services: joi
+    .array()
+    .items(
+      joi.string().valid("Catering", "Drive-Thru", "Dine-In", "Restaurant")
+    ),
+});
+
 export const loginSchema = joi.object({
-  email: joi.string().email().when("socialMediaId",{
-    is:joi.exist(),
-    then:joi.forbidden(),
-    otherwise:joi.required()
+  email: joi.string().email().when("socialMediaId", {
+    is: joi.exist(),
+    then: joi.forbidden(),
+    otherwise: joi.required(),
   }),
-  password: joi
-  .string()
-  .max(50)
-  .when("socialMediaId",{
-    is:joi.exist(),
-    then:joi.forbidden(),
-    otherwise:joi.required()
+  password: joi.string().max(50).when("socialMediaId", {
+    is: joi.exist(),
+    then: joi.forbidden(),
+    otherwise: joi.required(),
   }),
-  socialMediaId:joi.string()
+  socialMediaId: joi.string(),
 });
 
 export const otpSchema = joi.object({
-  email:joi.when("user_id", {
+  email: joi.when("user_id", {
     is: joi.exist(),
     then: joi.forbidden(),
-    otherwise: joi.string().email().required()
-  }), 
-  user_id:joi.string().hex().length(24),
+    otherwise: joi.string().email().required(),
+  }),
+  user_id: joi.string().hex().length(24),
   otp: joi.string().min(4).max(4).required(),
-  type: joi.string().valid("SIGNUP", "FORGOT","LOGIN").required(),
+  type: joi.string().valid("SIGNUP", "FORGOT", "LOGIN").required(),
 });
 export const verifyOtpSchema = joi.object({
-  email:joi.when("user_id", {
+  email: joi.when("user_id", {
     is: joi.exist(),
     then: joi.forbidden(),
-    otherwise: joi.string().email().required()
+    otherwise: joi.string().email().required(),
   }),
   otp: joi.string().min(4).max(4).required(),
 });
@@ -92,7 +119,7 @@ export const changePasswordSchema = joi.object({
   newPassword: passwordSchema,
 });
 export const emailSchema = joi.object({
-  email:joi.string().email().required()
+  email: joi.string().email().required(),
 });
 export const userIdSchema = joi.object({
   userId: joi.string().hex().length(24).required(),
@@ -102,7 +129,7 @@ export const userIdSchemaOptional = joi.object({
 });
 export const userSearchQuery = joi.object({
   name: joi.string().allow(""),
-  group_id:joi.string().hex().length(24)
+  group_id: joi.string().hex().length(24),
 });
 export const groupIdSchema = joi.object({
   group_id: joi.string().hex().length(24).required(),
@@ -113,19 +140,19 @@ export const groupRequestSchema = joi.object({
 });
 export const deleteChatSchema = joi.object({
   group_id: joi.string().hex().length(24).required(),
-  type:joi.string().valid("DELETE","EXIT").required(),
+  type: joi.string().valid("DELETE", "EXIT").required(),
 });
 export const groupSchema = joi.object({
   name: joi.string().min(2).max(100).required(),
   description: joi.string().min(1).max(10000).required(),
-  file:joi.any(),
+  file: joi.any(),
   user_id: joi.array().items(joi.string().regex(/^[0-9a-fA-F]{24}$/)),
 });
 export const updateGroupSchema = joi.object({
-  group_id:joi.string().hex().length(24).required(),
+  group_id: joi.string().hex().length(24).required(),
   name: joi.string().min(2).max(100),
   description: joi.string().min(20).max(10000),
-  notification_muted:joi.boolean().strict(true),
+  notification_muted: joi.boolean().strict(true),
   // file:joi.array().items(joi.binary()),
   user_id: joi.array().items(joi.string().regex(/^[0-9a-fA-F]{24}$/)),
 });
@@ -149,7 +176,7 @@ export const updateUserSchema = joi.object({
   state_code: joi.string(),
   city: joi.string(),
   zip_code: joi.string().min(3).max(8),
-  cover_photo:joi.any(),
-  about:joi.string(),
-  profile_pic:joi.string().allow("")
+  cover_photo: joi.any(),
+  about: joi.string(),
+  profile_pic: joi.string().allow(""),
 });

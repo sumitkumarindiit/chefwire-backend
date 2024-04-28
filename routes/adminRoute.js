@@ -3,7 +3,7 @@ import * as Controller from "../controllers/index.js";
 import {adminRoute, authenticate} from "../middleware/auth.js";
 const admin = express.Router();
 
-// admin.post("/login", Controller.Admin.signin);
+admin.post("/create-quest", authenticate, Controller.Admin.createQuest);
 // admin.post("/forgot-password", Controller.Admin.forgotPassword);
 // admin.patch("/verify-forgot-password-otp",Controller.Admin.verifyForgotOTP)
 // admin.patch("/otp", Controller.Admin.verifyOTP);

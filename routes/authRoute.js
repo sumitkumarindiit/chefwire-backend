@@ -6,8 +6,8 @@ const auth = express.Router();
 
 
 auth.post("/signup", Controller.Auth.signup);
-auth.post("/merchant-signup", Controller.Auth.signupMerchant);
-auth.put("/update-merchant", Controller.Auth.updateMerchantProfile);
+auth.post("/merchant-signup", Controller.Merchant.signupMerchant);
+auth.put("/update-merchant", Controller.Merchant.updateMerchantProfile);
 auth.post("/signin", Controller.Auth.signin);
 auth.patch("/logout",authenticate, Controller.Auth.logout);
 auth.post("/forgot-password", Controller.Auth.forgotPassword);
