@@ -1,15 +1,17 @@
 import User from "../models/userModel.js";
 import bcrypt from "bcrypt";
+import { Logs } from "../middleware/log.js";
 import * as Helper from "../services/HelperFunction.js";
+import * as validatePost from "../services/SchemaValidate/homeSchema.js";
 import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants } from "../services/Constants.js";
 import Role from "../models/roleAndPermissionModel.js";
 import uploadToS3 from "../services/s3Services.js";
 import Address from "../models/addressModel.js";
-import {
-  merchantCommonAggregation
-} from "../services/userService.js";
+import { merchantCommonAggregation } from "../services/userService.js";
 import mongoose from "mongoose";
+import Category from "../models/categoryModel.js";
+import RestaurantMenu from "../models/restaurantMenuModel.js";
 
 export const signupMerchant = async (req, res) => {
   try {
@@ -100,6 +102,17 @@ export const updateMerchantProfile = async (req, res) => {
   try {
     const profilePic = req.files?.profilePic;
     const coverPic = req.files?.coverPic;
+    const galleryImg = req.files?.gallery;
+    if (galleryImg) {
+      if (galleryImg && Array.isArray(galleryImg)) {
+        const imgFile = galleryImg.map((file, index) => {
+          return file.data;
+        });
+        req.body.gallery = imgFile;
+      } else {
+        req.body.gallery = [galleryImg.data];
+      }
+    }
     const { openingHours, categories, services } = req.body;
 
     if (openingHours) {
@@ -138,16 +151,30 @@ export const updateMerchantProfile = async (req, res) => {
       await uploadToS3(coverPic.data, filename, coverPic.mimetype);
       restBody.coverPic = filename;
     }
-    let { merchant_id, location, ...objToSave } = req.body;
+    if (galleryImg) {
+      let file = Array.isArray(galleryImg) ? galleryImg : [galleryImg];
+      let url = await Promise.all(
+        file.map(async (item) => {
+          const filenamePrefix = Date.now();
+          const extension = item.name.split(".").pop();
+          const filename = filenamePrefix + "." + extension;
+          await uploadToS3(item.data, filename, item.mimetype);
+          return filename;
+        })
+      );
+      req.body.gallery = url;
+    }
+    let { merchantId, location, gallery, ...objToSave } = req.body;
     if (location) {
       location = JSON.parse(location);
     }
 
     const user = await User.findByIdAndUpdate(
-      merchant_id,
+      merchantId,
       {
         ...objToSave,
         ...(location && { "location.coordinates": location.coordinates }),
+        ...(galleryImg && { $addToSet: { gallery: { $each: gallery } } }),
       },
 
       { new: true }
@@ -163,56 +190,156 @@ export const updateMerchantProfile = async (req, res) => {
     return Helper.errorMsg(res, err, 500);
   }
 };
-export const getRestaurants = async (req, res) => {
+export const deleteSingleImageFromMerchantProfileGallery = async (req, res) => {
   try {
-    let service= req.query.services;
-    if(service){
-      req.query.services = JSON.parse(service)
-    }
-    if (Helper.validateRequest(validateUser.getmerchantSchema, req.query, res))
+    if (Helper.validateRequest(validateUser.deletePhotoGallery, req.body, res))
       return;
-    let {restaurantId,services,sort,rating}=req.query;
-    let match={};
-    if(services){
-      match={ services: { $elemMatch: { $in: services } } }
-    }
-    if(rating){
-      match={rating:{$gte:+rating}}
-    }
-    const aggregate = [
-      ...(restaurantId?[{
-        $match:{_id:new mongoose.Types.ObjectId(restaurantId)}
-      }]:[]),
+    let { merchantId, name } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      merchantId,
       {
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: req.user.currentAddress.coordinates,
-          },
-          distanceField: "distance",
-          maxDistance: 6000000,
-          spherical: true,
-        },
+        $pull: { gallery: name },
       },
-      {
-        $addFields: {
-          distance: { $divide: ["$distance", 1000] },
-        },
-      },
-      ...merchantCommonAggregation(),
-      {
-        $match:match
-      },
-      {
-        $sort: {
-          distance: 1,
-        },
-      },
-    ];
-    const result = await User.aggregate(aggregate);
-    return Helper.successMsg(res, Constants.DATA_FETCHED, result);
+      { new: true }
+    );
+    return Helper.successMsg(res, Constants.DATA_DELETED, user);
   } catch (err) {
     console.log(err);
     return Helper.errorMsg(res, err, 500);
+  }
+};
+export const createCategory = async (req, res, next) => {
+  try {
+    const file = req.files?.icon;
+    if (
+      Helper.validateRequest(
+        validatePost.categorySchema,
+        { ...req.body, icon: file.data },
+        res
+      )
+    )
+      return;
+    const isCategory = await Category.findOne({
+      restaurantId: req.user._id,
+      name: req.body.name,
+    });
+    if (isCategory) {
+      return Helper.errorMsg(res, Constants.DATA_EXIST, 200);
+    }
+    if (file) {
+      const filenamePrefix = Date.now();
+      const extension = file.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(file.data, filename, file.mimetype);
+      req.body.icon = filename;
+    }
+    const result = await Category.create({
+      ...req.body,
+      restaurantId: req.user._id,
+    });
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_CREATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 404);
+    }
+    await Logs(req, Constants.DATA_CREATED, next);
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+  } catch (err) {
+    console.log("Errors", err);
+    Logs(req, Constants.SOMETHING_WRONG, next);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const updateCategory = async (req, res, next) => {
+  try {
+    const file = req.files?.icon;
+    if (file) {
+      const filenamePrefix = Date.now();
+      const extension = file.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(file.data, filename, file.mimetype);
+      req.body.icon = filename;
+    }
+    if (
+      Helper.validateRequest(validatePost.updateCategorySchema, req.body, res)
+    )
+      return;
+    const { id, ...rest } = req.body;
+    const result = await Category.findByIdAndUpdate(id, rest, {
+      new: true,
+    })
+      .select("name icon")
+      .lean();
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_UPDATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_UPDATED, 404);
+    }
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, result);
+  } catch (err) {
+    console.log(err);
+    Logs(req, Constants.SOMETHING_WRONG, next);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const deleteCategory = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.idSchema, req.query, res)) return;
+    const result = await Category.findByIdAndDelete(req.query.id);
+    await Logs(req, Constants.DATA_DELETED, next);
+    return Helper.successMsg(res, Constants.DATA_DELETED, {});
+  } catch (err) {
+    console.log(err);
+    await Logs(req, Constants.SOMETHING_WRONG, next);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const createMenu = async (req, res, next) => {
+  try {
+    const file = req.files?.profilePic;
+    const {nutrition,price}=req.body;
+    if(nutrition){
+      req.body.nutrition = JSON.parse(nutrition)
+    }
+    if(price){
+      req.body.price = JSON.parse(price)
+    }
+    if (
+      Helper.validateRequest(
+        validatePost.menuSchema,
+        { ...req.body, profilePic: file.data },
+        res
+      )
+    )
+      return;
+    const isMenu = await Category.findOne({
+      restaurantId: req.user._id,
+      categoryId: req.body.categoryId,
+      name: req.body.name,
+    });
+    if (isMenu) {
+      return Helper.errorMsg(res, Constants.DATA_EXIST, 200);
+    }
+    if (file) {
+      const filenamePrefix = Date.now();
+      const extension = file.name.split(".").pop();
+      const filename = filenamePrefix + "." + extension;
+      await uploadToS3(file.data, filename, file.mimetype);
+      req.body.profilePic = filename;
+    }
+    const result = await RestaurantMenu.create({
+      ...req.body,
+      restaurantId: req.user._id,
+    });
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_CREATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 404);
+    }
+    await Logs(req, Constants.DATA_CREATED, next);
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+  } catch (err) {
+    console.log("Errors", err);
+    Logs(req, Constants.SOMETHING_WRONG, next);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };

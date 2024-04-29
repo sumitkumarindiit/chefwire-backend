@@ -296,7 +296,56 @@ export const merchantCommonAggregation = (profile) => {
     },
     {
       $addFields:{
-        rating:{$avg:"$reviews.rating"}
+        rating:{$cond:{if:{ $gt: [{ $size: "$reviews" }, 0] }, then: {$avg:"$reviews.rating"},else:0}}
+      }
+    },
+    {
+      $lookup:{
+        from:"qas",
+        localField:"_id",
+        foreignField:"reataurantId",
+        as:"Q&A",
+        pipeline:[
+          {
+            $project:{
+              question:1,
+              answer:1
+            }
+          }
+        ]
+      }
+    },
+    {
+      $lookup:{
+        from:"qas",
+        localField:"_id",
+        foreignField:"reataurantId",
+        as:"Q&A",
+        pipeline:[
+          {
+            $project:{
+              question:1,
+              answer:1
+            }
+          }
+        ]
+      }
+    },
+    {
+      $lookup:{
+        from:"addresses",
+        localField:"_id",
+        foreignField:"addressId",
+        as:"address",
+        pipeline:[
+          {
+            $project:{
+              __v:0,
+              createdAt:0,
+              updatedAt:0
+            }
+          }
+        ]
       }
     },
     {

@@ -44,16 +44,16 @@ export const merchantSignupSchema = joi.object({
   title: joi.string().required(),
 });
 export const updatemerchantSchema = joi.object({
-  merchant_id: joi.string().hex().length(24).required(),
+  merchantId: joi.string().hex().length(24).required(),
   name: joi.string(),
   email: joi.string().email(),
   countryCode: joi.string(),
   mobileNumber: joi.string().min(10).max(10),
   openingHours: joi.array().items(joi.string()),
   services: joi.array(),
-  categories: joi.array().items(joi.string()),
   profilePic: joi.binary().allow("", null),
   coverPic: joi.binary().allow("", null),
+  gallery: joi.array().items(joi.binary()),
   location: joi.object({
     apartmentNo: joi.number(),
     street: joi.string(),
@@ -66,10 +66,14 @@ export const updatemerchantSchema = joi.object({
   bio: joi.string(),
   title: joi.string(),
 });
+export const deletePhotoGallery = joi.object({
+  merchantId: joi.string().hex().length(24).required(),
+  name: joi.string().required(),
+});
 export const getmerchantSchema = joi.object({
   restaurantId: joi.string().hex().length(24),
-  sort:joi.string(),
-  rating:joi.string(),
+  sortBy: joi.string(),
+  rating: joi.string(),
   services: joi
     .array()
     .items(

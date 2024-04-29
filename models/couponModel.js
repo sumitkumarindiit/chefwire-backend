@@ -9,7 +9,7 @@ const couponSchema = new Schema({
     required: true,
     index: true,
   },
-  discout: {
+  discount: {
     type: Number,
     required: true,
   },

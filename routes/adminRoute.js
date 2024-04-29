@@ -4,6 +4,7 @@ import {adminRoute, authenticate} from "../middleware/auth.js";
 const admin = express.Router();
 
 admin.post("/create-quest", authenticate, Controller.Admin.createQuest);
+admin.post("/create-coupon", authenticate, Controller.Admin.createCoupon);
 // admin.post("/forgot-password", Controller.Admin.forgotPassword);
 // admin.patch("/verify-forgot-password-otp",Controller.Admin.verifyForgotOTP)
 // admin.patch("/otp", Controller.Admin.verifyOTP);

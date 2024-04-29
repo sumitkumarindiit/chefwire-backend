@@ -17,6 +17,9 @@ const questSchema = new Schema({
     type: Date,
     default: null,
   },
+  banner: {
+    type: String,
+  },
   rules:[String],
   startedUsers: [
     {

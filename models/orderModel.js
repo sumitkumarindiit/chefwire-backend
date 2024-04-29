@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Constants } from "../services/Constants";
+import { Constants } from "../services/Constants.js";
 
 const Schema = mongoose.Schema;
 const orderSchema = new Schema(
@@ -34,6 +34,9 @@ const orderSchema = new Schema(
       type: String,
       enum: ["CATERER", "DINEIN", "GENERAL"],
       default: "GENERAL",
+    },
+    paymentMethod:{
+      type:String,
     },
     items: [],
     eventName: {

@@ -2,9 +2,13 @@ import joi from "joi";
 import jwt from "jsonwebtoken";
 import Sib from "sib-api-v3-sdk";
 import twilio from "twilio";
+import Order from "../models/orderModel.js";
 
 export const authUser = (obj) => {
-  return jwt.sign(obj, process.env.JWT_SECRET, {expiresIn: '15d', algorithm: 'HS256' });
+  return jwt.sign(obj, process.env.JWT_SECRET, {
+    expiresIn: "15d",
+    algorithm: "HS256",
+  });
 };
 
 export const validateRequest = (schema, value, res) => {
@@ -28,7 +32,9 @@ export const errorMsg = (res, message, code, err) => {
   if (err && err instanceof jwt.JsonWebTokenError) {
     return res.status(code).json({ status: false, message: "Invalid token" });
   }
-  return res.status(code===500?code:200).json({ status: false, message: message });
+  return res
+    .status(code === 500 ? code : 200)
+    .json({ status: false, message: message });
 };
 export const ObjectIdRequired = () => {
   return joi.string().hex().length(24).required();
@@ -82,19 +88,36 @@ export const sendEmail = async (email, template, subject) => {
     return null;
   }
 };
-export const sendMessage = async (number,body) => {
+export const sendMessage = async (number, body) => {
   const client = twilio(
     process.env.TWILIO_ACCOUNT_SID,
     process.env.TWILIO_AUTH_TOKEN
   );
   try {
-    console.log(number)
+    console.log(number);
     await client.messages.create({
       body: body,
-      from: '+12055390892',
-      to: number 
+      from: "+12055390892",
+      to: number,
     });
     return true;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+export const HowManyOrderByUser = async (userId) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const orders = await Order.find({
+      userId,
+      status:"COMPLETED",
+      createdAt: { $gte: startOfToday, $lte: endOfToday },
+    });
+    return orders.length;
   } catch (error) {
     console.error(error);
     return null;

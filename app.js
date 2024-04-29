@@ -16,6 +16,8 @@ import user from "./routes/userRoute.js";
 import post from "./routes/postRoute.js";
 import home from "./routes/homeRoute.js";
 import admin from "./routes/adminRoute.js";
+import merchant from "./routes/merchantRoute.js";
+import restaurant from "./routes/restaurantRoute.js";
 import auth from "./routes/authRoute.js";
 import cron from "./cronJob.js";
 
@@ -47,6 +49,8 @@ app.use("/auth", auth);
 app.use("/post", post);
 app.use("/home", home);
 app.use("/admin", admin);
+app.use("/merchant", merchant);
+app.use("/restaurant", restaurant);
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

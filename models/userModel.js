@@ -31,6 +31,11 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
+    coverPic: {
+      type: String,
+      default: null,
+    },
+    gallery:[String],
     location: {
       type: {
         type: String,
@@ -43,12 +48,8 @@ const userSchema = new Schema(
         index: "2dsphere",
       },
     },
-    coverPic: {
-      type: String,
-      default: null,
-    },
+    
     openingHours: [String],
-    categories: [String],
     services: [
       {
         type: Schema.Types.ObjectId,

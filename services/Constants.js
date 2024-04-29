@@ -31,6 +31,7 @@ export const Constants = {
   DATA_FETCHED:"Data fetched successfully",
   DATA_CREATED:"Data added successfully",
   DATA_UPDATED:"Data updated successfully",
+  DATA_NOT_UPDATED:"Data not updated",
   DATA_DELETED:"Data deleted successfully",
   DATA_NOT_FETCHED:"Error while fetching data",
   DATA_NOT_CREATED:"Error while creating data",
