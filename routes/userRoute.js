@@ -8,7 +8,7 @@ const user = express.Router();
 //   authenticate,
 //   Controller.User.changePassword
 // );
-// user.post("/send-request",authenticate,studentRoute,Controller.Action.sendFriendRequest);
+user.put("/add-or-update-address",authenticate,Controller.User.addOrUpdateAddress);
 // user.post("/cancel-request",authenticate,studentRoute,Controller.Action.cancelFriendRequest);
 // user.post("/cancel-sent-request",authenticate,studentRoute,Controller.Action.cancelSentFriendRequest);
 // user.post("/accept-request",authenticate,studentRoute,Controller.Action.acceptFriendRequest);

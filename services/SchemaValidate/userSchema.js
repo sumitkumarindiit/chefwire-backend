@@ -74,6 +74,7 @@ export const getmerchantSchema = joi.object({
   restaurantId: joi.string().hex().length(24),
   sortBy: joi.string(),
   rating: joi.string(),
+  search: joi.string(),
   services: joi
     .array()
     .items(
@@ -183,4 +184,18 @@ export const updateUserSchema = joi.object({
   cover_photo: joi.any(),
   about: joi.string(),
   profile_pic: joi.string().allow(""),
+});
+export const updateAddressSchema = joi.object({
+  apartmentNo: joi.string(),
+  street: joi.string(),
+  landMark: joi.string(),
+  city: joi.string(),
+  country: joi.string(),
+  zipCode: joi.string(),
+  addressType: joi
+    .string()
+    .valid("HOME", "OFFICE", "WORK", "CURRENT", "OTHER")
+    .required(),
+  addressTitle: joi.string(),
+  coordinates: joi.array().items(joi.number()),
 });

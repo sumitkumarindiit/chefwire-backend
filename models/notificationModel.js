@@ -13,6 +13,10 @@ const notificationSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: User
     },
+    title:{
+      type:String,
+      default:null
+    },
     message:{
       type:String,
       default:null
@@ -23,13 +27,8 @@ const notificationSchema = new Schema(
     },
     type:{
       type:String,
-      enum:[Constants.GROUP_MEMBER_ADDED,Constants.LIKE_POST,Constants.LIKE_COMMENT,Constants.COMMENT_POST,Constants.ACCEPT_REQUEST,Constants.NEW_CHAT_CREATED],
-      default:Constants.LIKE_POST
-    },
-    userStatus:{
-      type:String,
-      enum: [Constants.ACTIVE, Constants.INACTIVE],
-      default: Constants.ACTIVE,
+      enum:["ORDER"],
+      default:"ORDER"
     },
     status: {
       type: String,

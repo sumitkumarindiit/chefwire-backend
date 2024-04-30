@@ -12,14 +12,7 @@ const postSchema = new Schema(
       required: true,
       index:true
     },
-    restaurantId:{
-      type: Schema.Types.ObjectId,
-      ref: "Restaurant",
-      index:true
-    },
-    tags: {
-      type: Array,
-    },
+    tags: [String],
     media: [],
     description: {
       type: String,

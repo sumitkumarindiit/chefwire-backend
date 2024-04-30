@@ -123,3 +123,19 @@ export const HowManyOrderByUser = async (userId) => {
     return null;
   }
 };
+export const extractHashtags=(sentence) =>{
+  const regex = /#\w+/g;
+  const hashtags = sentence.match(regex);
+  return hashtags || [];
+}
+export const Sender =(req)=>{
+  return {
+    _id: req.user._id,
+    name: req.user.name,
+    profilePic: req.user.profilePic,
+  };
+}
+export const generateOrderId=() =>{
+  const randomNumber = Math.floor(Math.random() * 900000) + 100000;
+  return "ORDR"+randomNumber.toString();
+}

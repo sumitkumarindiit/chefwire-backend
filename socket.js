@@ -46,6 +46,7 @@ const initializeSocketIO = (io) => {
       socket.user = user;
       socket.join(user._id.toString());
       socket.emit(SocketEvent.CONNECTED_EVENT);
+      User.findByIdAndUpdate(user._id,{isOnline:true});
       console.log("User connected 🗼. userId: ", user._id.toString());
       onlineUsers.add(user._id.toString());
       io.emit(SocketEvent.ONLINE_USERS, Array.from(onlineUsers));
@@ -54,6 +55,7 @@ const initializeSocketIO = (io) => {
       mountParticipantStoppedTypingEvent(socket);
 
       socket.on(SocketEvent.DISCONNECTED_EVENT, () => {
+        User.findByIdAndUpdate(user._id,{isOnline:false});
         console.log("user has disconnected 🚫. userId: " + socket.user?._id);
         onlineUsers.delete(socket.user?._id.toString());
         io.emit(SocketEvent.ONLINE_USERS, Array.from(onlineUsers));

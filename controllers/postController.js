@@ -1,13 +1,13 @@
-// import Comment from "../models/commentModel.js";
-// import Post from "../models/postModel.js";
-// import uploadToS3 from "../services/s3Services.js";
-// import * as Helper from "../services/HelperFunction.js";
-// import * as validatePost from "../services/SchemaValidate/postSchema.js";
-// import { Logs } from "../middleware/log.js";
-// import { Notifications } from "../middleware/notification.js";
-// import { Constants, SocketEvent } from "../services/Constants.js";
-// import mongoose from "mongoose";
-// import { imageModeration, textModeration } from "../services/userService.js";
+import Comment from "../models/commentModel.js";
+import Post from "../models/postModel.js";
+import uploadToS3 from "../services/s3Services.js";
+import * as Helper from "../services/HelperFunction.js";
+import * as validatePost from "../services/SchemaValidate/postSchema.js";
+import { Logs } from "../middleware/log.js";
+import { Notifications } from "../middleware/notification.js";
+import { Constants, SocketEvent } from "../services/Constants.js";
+import mongoose from "mongoose";
+import { imageModeration, textModeration } from "../services/userService.js";
 
 
 // const commentCommonAggregation = () => {
@@ -181,86 +181,68 @@
 //     },
 //   ];
 // };
+export const createPost = async (req, res, next) => {
+    try {
+      const files = req.files?.media;
+  
+      if (files) {
+        if (files && Array.isArray(files)) {
+          const imgFile = files.map((file, index) => {
+            return file.data;
+          });
+          req.body.media = imgFile;
+        } else {
+          req.body.media = [files.data];
+        }
+      }
+      if (Helper.validateRequest(validatePost.postSchema, req.body, res)) return;
+      let file;
+      if (files) {
+        file = Array.isArray(files) ? files : [files];
+      } else {
+        file = null;
+      }
+      let url;
+      if (file && file.length > 0) {
+        url = await Promise.all(
+          file.map(async (item) => {
+            const filenamePrefix = Date.now();
+            const extension = item.name.split(".").pop();
+            const filename = filenamePrefix + "." + extension;
+            await uploadToS3(item.data, filename, item.mimetype);
+            return { filename, type: item.mimetype.split("/")[0]?.toUpperCase() };
+          })
+        );
+      }
+      // const warning = await textModeration(res, obj.description);
+      // if (warning) {
+      //   return Helper.errorMsg(res, warning, 400);
+      // }
+      let tags = Helper.extractHashtags(req.body.description);
+      const post = await Post.create({
+        postedBy: req.user._id,
+        description: req.body.description,
+        tags,
+        media: url,
+      });
+      if (!post) {
+        Logs(req, Constants.DATA_NOT_CREATED, next);
+        return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 400);
+      }
+      Logs(req, Constants.DATA_CREATED, next);
+      // const result = await Post.findById(post._id)
+      //   .populate("posted_by", "_id first_name last_name profile_pic")
+      //   .populate("likes", "_id first_name last_name profile_pic")
+      //   .lean();
+      // result.comments = [];
+      return Helper.successMsg(res, Constants.DATA_CREATED, post);
+    } catch (err) {
+      console.log(err);
+      Logs(req, Constants.SOMETHING_WRONG, next);
+      return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+    }
+  };
 
-// export const createPost = async (req, res, next) => {
-//   try {
-//     const { tags, ...rest } = req.body;
-//     const files = req.files?.file;
-//     let obj;
-//     if (tags) {
-//       obj = {
-//         tags: JSON.parse(tags),
-//         ...rest,
-//       };
-//     } else {
-//       obj = req.body;
-//     }
-//     if (files) {
-//       if (files && Array.isArray(files)) {
-//         const warning = await imageModeration(files);
-//         if (warning) {
-//           return Helper.errorMsg(res, warning, 400);
-//         }
-//         const imgFile = files.map((file, index) => {
-//           return file.data;
-//         });
-//         obj = { ...obj, file: imgFile };
-//       } else {
-//         const warning = await imageModeration([files]);
-//         if (warning) {
-//           return Helper.errorMsg(res, warning, 400);
-//         }
-//         obj = { ...obj, file: [files.data] };
-//       }
-//     }
-//     if (Helper.validateRequest(validatePost.postSchema, obj, res)) return;
-//     let file;
-//     if (files) {
-//       file = Array.isArray(req.files.file) ? req.files.file : [req.files.file];
-//     } else {
-//       file = null;
-//     }
-//     let url;
-//     if (file && file.length > 0) {
-//       url = await Promise.all(
-//         file.map(async (item) => {
-//           const filenamePrefix = Date.now();
-//           const extension = item.name.split(".").pop();
-//           const filename = filenamePrefix + "." + extension;
-//           await uploadToS3(item.data, filename, item.mimetype);
-//           return { filename, type: item.mimetype.split("/")[0]?.toUpperCase() };
-//         })
-//       );
-//     }
-//     const warning = await textModeration(res, obj.description);
-//     if (warning) {
-//       return Helper.errorMsg(res, warning, 400);
-//     }
-//     const post = await Post.create({
-//       posted_by: req.user._id,
-//       school_id: req.user.school_id,
-//       description: obj.description,
-//       passion_id: obj.passion_id,
-//       tags: obj.tags,
-//       media: url,
-//     });
-//     if (!post) {
-//       Logs(req, Constants.DATA_NOT_SAVED, next);
-//       return Helper.errorMsg(res, Constants.DATA_NOT_SAVED, 400);
-//     }
-//     Logs(req, Constants.DATA_SAVED, next);
-//     const result = await Post.findById(post._id)
-//       .populate("posted_by", "_id first_name last_name profile_pic")
-//       .populate("likes", "_id first_name last_name profile_pic")
-//       .lean();
-//     result.comments = [];
-//     return Helper.successMsg(res, Constants.DATA_SAVED, result);
-//   } catch (err) {
-//     console.log(err);
-//     Logs(req, Constants.SOMETHING_WRONG, next);
-//     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
-//   }
-// };
 // export const getAllPost = async (req, res) => {
 //   try {
 //     const followedPage = await Page.find({

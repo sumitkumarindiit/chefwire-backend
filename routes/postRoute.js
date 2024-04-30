@@ -4,7 +4,7 @@ import {authenticate, studentRoute} from "../middleware/auth.js";
 
 const post = express.Router();
 
-// post.post('/create-post',authenticate,studentRoute,Controller.Post.createPost);
+post.post('/create-post',authenticate,Controller.Post.createPost);
 // post.patch('/like',authenticate,studentRoute,Controller.Post.likePost);
 // post.patch('/unlike-post',authenticate,studentRoute,Controller.Post.unLikePost);
 // post.get("/get-posts",authenticate,Controller.Post.getAllPost);

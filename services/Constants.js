@@ -1,6 +1,6 @@
 export const SocketEvent = {
   LIKE_POST_EVENT: "likePost",
-  ACCEPT_REQUEST_EVENT: "acceptRequest",
+  NEW_BOOKING: "newBooking",
   CONNECTED_EVENT: "connected",
   DISCONNECTED_EVENT: "disconnect",
   LIKE_COMMENT_EVENT: "likeComment",

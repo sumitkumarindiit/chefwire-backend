@@ -158,7 +158,7 @@ export const userCommonAggregation = (profile) => {
         pipeline: [
           {
             $match: {
-              addressType: { $in: ["CURRENT", "RESTAURANT"] },
+              addressType:"CURRENT",
             },
           },
           {

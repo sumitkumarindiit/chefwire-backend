@@ -12,12 +12,13 @@ import Quest from "../models/questModel.js";
 import mongoose from "mongoose";
 import { merchantCommonAggregation } from "../services/userService.js";
 import User from "../models/userModel.js";
+import Notification from "../models/notificationModel.js";
 
 const offerAggregation = [
   {
     $match: {
       validTill: { $gt: new Date() },
-      status:Constants.ACTIVE
+      status: Constants.ACTIVE,
     },
   },
   {
@@ -78,60 +79,77 @@ export const getDashBoard = async (req, res) => {
 };
 export const getRestaurants = async (req, res) => {
   try {
-    let service= req.query.services;
-    if(service){
-      req.query.services = JSON.parse(service)
+    let service = req.query.services;
+    if (service) {
+      req.query.services = JSON.parse(service);
     }
     if (Helper.validateRequest(validateUser.getmerchantSchema, req.query, res))
       return;
-    let {restaurantId,services,sortBy,rating}=req.query;
-    let sort={
-      distance:1
+    let { restaurantId, services, sortBy, rating, search } = req.query;
+    let sort = {
+      distance: 1,
+    };
+    let match = {};
+    if (services) {
+      match = { services: { $elemMatch: { $in: services } } };
     }
-    let match={};
-    if(services){
-      match={ services: { $elemMatch: { $in: services } } }
+    if (rating) {
+      match = { rating: { $gte: +rating } };
     }
-    if(rating){
-      match={rating:{$gte:+rating}}
+    if (search) {
+      match = {
+        ...match,
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
     }
-    if(sortBy){
-      if(sortBy==="distance1"){
-        sort={
-          distance:1
-        }
+    if (sortBy) {
+      if (sortBy === "distance1") {
+        sort = {
+          distance: 1,
+        };
       }
-      if(sortBy==="distance0"){
-        sort={
-          distance:-1
-        }
+      if (sortBy === "distance0") {
+        sort = {
+          distance: -1,
+        };
       }
-      if(sortBy==="rating0"){
-        sort={
-          rating:-1
-        }
+      if (sortBy === "rating0") {
+        sort = {
+          rating: -1,
+        };
       }
-      if(sortBy==="rating1"){
-        sort={
-          rating:1
-        }
+      if (sortBy === "rating1") {
+        sort = {
+          rating: 1,
+        };
       }
     }
     const aggregate = [
-      ...(restaurantId?[{
-        $match:{_id:new mongoose.Types.ObjectId(restaurantId)}
-      }]:[]),
-      ...(restaurantId?[]:[{
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: req.user.currentAddress.coordinates,
-          },
-          distanceField: "distance",
-          maxDistance: 6000000,
-          spherical: true,
-        },
-      }]),
+      ...(restaurantId
+        ? [
+            {
+              $match: { _id: new mongoose.Types.ObjectId(restaurantId) },
+            },
+          ]
+        : []),
+      ...(restaurantId
+        ? []
+        : [
+            {
+              $geoNear: {
+                near: {
+                  type: "Point",
+                  coordinates: req.user.currentAddress.coordinates,
+                },
+                distanceField: "distance",
+                maxDistance: 6000000,
+                spherical: true,
+              },
+            },
+          ]),
       {
         $addFields: {
           distance: { $divide: ["$distance", 1000] },
@@ -139,10 +157,10 @@ export const getRestaurants = async (req, res) => {
       },
       ...merchantCommonAggregation(),
       {
-        $match:match
+        $match: match,
       },
       {
-        $sort: sort
+        $sort: sort,
       },
     ];
     const result = await User.aggregate(aggregate);
@@ -176,7 +194,7 @@ export const getQuest = async (req, res) => {
       return;
     const { questId } = req.query;
     let totalOrders, completedOrders;
-    let match = { validTill: { $gt: new Date() },status:Constants.ACTIVE };
+    let match = { validTill: { $gt: new Date() }, status: Constants.ACTIVE };
     if (questId) {
       match = { _id: new mongoose.Types.ObjectId(questId) };
       let [quest, totalCompOrders] = await Promise.all([
@@ -192,27 +210,26 @@ export const getQuest = async (req, res) => {
       {
         $match: match,
       },
-      
-      
+
       ...(questId
         ? [
-          {
-            $lookup: {
-              from: "coupons",
-              localField: "couponId",
-              foreignField: "_id",
-              as: "coupon",
-              pipeline:[
-                {
-                  $project:{
-                    code:1,
-                    discount:1,
-                    discountType:1
-                  }
-                }
-              ]
+            {
+              $lookup: {
+                from: "coupons",
+                localField: "couponId",
+                foreignField: "_id",
+                as: "coupon",
+                pipeline: [
+                  {
+                    $project: {
+                      code: 1,
+                      discount: 1,
+                      discountType: 1,
+                    },
+                  },
+                ],
+              },
             },
-          },
             {
               $addFields: {
                 totalOrders: totalOrders,
@@ -240,13 +257,29 @@ export const getQuest = async (req, res) => {
           banner: 1,
           validTill: 1,
           questTitle: 1,
-          coupon:1,
-          totalOrders:1,
-          completedOrders:1
+          coupon: 1,
+          totalOrders: 1,
+          completedOrders: 1,
         },
       },
     ];
     const result = await Quest.aggregate(aggregate);
+    if (!result) {
+      return Helper.errorMsg(res, Constants.DATA_NOT_FETCHED, 404);
+    }
+    return Helper.successMsg(res, Constants.DATA_FETCHED, result);
+  } catch (err) {
+    console.log("Errors", err);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const getNotifications = async (req, res) => {
+  try {
+    // if (Helper.validateRequest(validatePost.getQuestSchema, req.query, res))
+    //   return;
+    const result = await Notification.find({ receiver: req.user._id })
+      .select("title message payload createdAt")
+      .lean();
     if (!result) {
       return Helper.errorMsg(res, Constants.DATA_NOT_FETCHED, 404);
     }

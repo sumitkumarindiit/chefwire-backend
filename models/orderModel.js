@@ -1,28 +1,25 @@
 import mongoose from "mongoose";
 import { Constants } from "../services/Constants.js";
 
+
 const Schema = mongoose.Schema;
 const orderSchema = new Schema(
   {
+    orderId:{
+      type:String,
+      required:true,
+      index:true,
+      unique:true,
+    },
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       index: true,
       required: true,
     },
-    catererId: {
-      type: Schema.Types.ObjectId,
-      ref: "Caterer",
-      default: null,
-    },
-    dineInId: {
-      type: Schema.Types.ObjectId,
-      ref: "DineIn",
-      default: null,
-    },
     restaurantId: {
       type: Schema.Types.ObjectId,
-      ref: "Restaurant",
+      ref: "User",
       default: null,
     },
     addressId: {
@@ -30,21 +27,30 @@ const orderSchema = new Schema(
       ref: "Address",
       default: null,
     },
+    couponId:{
+      type: Schema.Types.ObjectId,
+      ref: "Coupon",
+      default: null,
+    },
     orderType: {
       type: String,
-      enum: ["CATERER", "DINEIN", "GENERAL"],
-      default: "GENERAL",
+      enum: ["CATERER", "DINEIN", "FOOD"],
+      default: "FOOD",
     },
     paymentMethod:{
       type:String,
     },
-    items: [],
+    items: [{
+      type:Schema.Types.ObjectId,
+      ref:"RestaurantMenu"
+    }],
     eventName: {
       type: String,
       default: null,
     },
     eventType: {
       type: String,
+      lowercase:true,
       default: null,
     },
     eventDate: {
@@ -62,10 +68,6 @@ const orderSchema = new Schema(
     description: {
       type: String,
       default:null,
-    },
-    appliedCoupon: {
-      type: String,
-      default:null
     },
     status: {
       type: String,

@@ -10,6 +10,7 @@ import uploadToS3 from "../services/s3Services.js";
 import Notification from "../models/notificationModel.js";
 import { userCommonAggregation } from "../services/userService.js";
 import mongoose from "mongoose";
+import Address from "../models/addressModel.js";
 
 export const changePassword = async (req, res, next) => {
   try {
@@ -148,6 +149,24 @@ export const updateUser = async (req, res, next) => {
     });
     Logs(req, Constants.DATA_UPDATED, next);
     return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    console.log(err);
+    Logs(req, Constants.SOMETHING_WRONG, next);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const addOrUpdateAddress = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validateUser.updateAddressSchema, req.body, res))
+      return;
+    const { addressType, ...objToSave } = req.body;
+   const result= await Address.findOneAndUpdate(
+      { addressId: req.user._id, addressType },
+      objToSave,
+      { new: true, upsert: true }
+    );
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, result);
   } catch (err) {
     console.log(err);
     Logs(req, Constants.SOMETHING_WRONG, next);

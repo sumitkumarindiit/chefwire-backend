@@ -12,6 +12,7 @@ home.delete("/delete-service",authenticate,Controller.Admin.deleteService);
 home.post("/create-offer",authenticate,Controller.Admin.createOffer);
 home.get("/get-restaurants",authenticate,Controller.Home.getRestaurants);
 home.get("/get-quest",authenticate,Controller.Home.getQuest);
+home.get("/get-notifications",authenticate,Controller.Home.getNotifications);
 
 /** CREATE CATEGORY */
 /**

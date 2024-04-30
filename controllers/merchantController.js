@@ -12,6 +12,7 @@ import { merchantCommonAggregation } from "../services/userService.js";
 import mongoose from "mongoose";
 import Category from "../models/categoryModel.js";
 import RestaurantMenu from "../models/restaurantMenuModel.js";
+import Post from "../models/postModel.js";
 
 export const signupMerchant = async (req, res) => {
   try {
@@ -297,12 +298,12 @@ export const deleteCategory = async (req, res, next) => {
 export const createMenu = async (req, res, next) => {
   try {
     const file = req.files?.profilePic;
-    const {nutrition,price}=req.body;
-    if(nutrition){
-      req.body.nutrition = JSON.parse(nutrition)
+    const { nutrition, price } = req.body;
+    if (nutrition) {
+      req.body.nutrition = JSON.parse(nutrition);
     }
-    if(price){
-      req.body.price = JSON.parse(price)
+    if (price) {
+      req.body.price = JSON.parse(price);
     }
     if (
       Helper.validateRequest(
@@ -343,3 +344,4 @@ export const createMenu = async (req, res, next) => {
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
+

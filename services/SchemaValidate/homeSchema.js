@@ -101,5 +101,21 @@ export const menuSchema = joi.object({
 });
 export const getMenuSchema = joi.object({
   categoryId: joi.string().hex().length(24),
-  menuId: joi.string().hex().length(24)
+  menuId: joi.string().hex().length(24),
+  type:joi.string().valid("CATERING","RESTAURANT").required()
 });
+export const makeOrderSchema = joi.object({
+  restaurantId: joi.string().hex().length(24).required(),
+  addressId: joi.string().hex().length(24).required(),
+  couponId: joi.string().hex().length(24),
+  orderType:joi.string().valid("CATERER", "DINEIN", "FOOD"),
+  paymentMethod:joi.string(),
+  items:joi.array().items(joi.string().hex().length(24)),
+  eventName:joi.string(),
+  eventType:joi.string(),
+  eventDate:joi.date(),
+  eventTime:joi.string(),
+  NoOfGuest:joi.number(),
+  description:joi.string()
+});
+

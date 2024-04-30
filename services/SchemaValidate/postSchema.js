@@ -1,14 +1,12 @@
 import joi from "joi";
 
 export const postSchema = joi.object({
-  tags: joi.array().items(joi.string()),
-  description: joi.string().when('file', {
+  media: joi.array().items(joi.binary()),
+  description: joi.string().when('media', {
     is: joi.exist(),
-    then: joi.string().allow(""),
-    otherwise: joi.string().required(),
-  }),
-  passion_id:joi.string().hex().length(24).required(),
-  file: joi.any()
+    then: joi.optional(),
+    otherwise: joi.required()
+  })
 });
 
 export const postIdSchema = joi.object({
