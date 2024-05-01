@@ -33,7 +33,7 @@ const postSchema = new Schema(
     ],
     report: [
       {
-        reported_by: {
+        reportedBy: {
           type: Schema.Types.ObjectId,
           ref: userModel,
           index:true
@@ -56,6 +56,7 @@ const postSchema = new Schema(
     timestamps: true,
   }
 );
+
 const Post = mongoose.model("Post", postSchema);
 export default Post;
 

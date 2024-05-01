@@ -1,13 +1,13 @@
 import express from "express";
 import * as Controller from "../controllers/index.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, merchantRoute } from "../middleware/auth.js";
 
 const auth = express.Router();
 
 
 auth.post("/signup", Controller.Auth.signup);
 auth.post("/merchant-signup", Controller.Merchant.signupMerchant);
-auth.put("/update-merchant", Controller.Merchant.updateMerchantProfile);
+auth.put("/update-merchant",authenticate,merchantRoute ,Controller.Merchant.updateMerchantProfile);
 auth.post("/signin", Controller.Auth.signin);
 auth.patch("/logout",authenticate, Controller.Auth.logout);
 auth.post("/forgot-password", Controller.Auth.forgotPassword);

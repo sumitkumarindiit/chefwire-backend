@@ -104,6 +104,7 @@ export const updateMerchantProfile = async (req, res) => {
     const profilePic = req.files?.profilePic;
     const coverPic = req.files?.coverPic;
     const galleryImg = req.files?.gallery;
+    const menuImg = req.files?.menu;
     if (galleryImg) {
       if (galleryImg && Array.isArray(galleryImg)) {
         const imgFile = galleryImg.map((file, index) => {
@@ -112,6 +113,16 @@ export const updateMerchantProfile = async (req, res) => {
         req.body.gallery = imgFile;
       } else {
         req.body.gallery = [galleryImg.data];
+      }
+    }
+    if (menuImg) {
+      if (menuImg && Array.isArray(menuImg)) {
+        const imgFile = menuImg.map((file, index) => {
+          return file.data;
+        });
+        req.body.menu = imgFile;
+      } else {
+        req.body.menu = [menuImg.data];
       }
     }
     const { openingHours, categories, services } = req.body;
@@ -165,17 +176,31 @@ export const updateMerchantProfile = async (req, res) => {
       );
       req.body.gallery = url;
     }
-    let { merchantId, location, gallery, ...objToSave } = req.body;
+    if (menuImg) {
+      let file = Array.isArray(menuImg) ? menuImg : [menuImg];
+      let url = await Promise.all(
+        file.map(async (item) => {
+          const filenamePrefix = Date.now();
+          const extension = item.name.split(".").pop();
+          const filename = filenamePrefix + "." + extension;
+          await uploadToS3(item.data, filename, item.mimetype);
+          return filename;
+        })
+      );
+      req.body.menu = url;
+    }
+    let { location, gallery,menu, ...objToSave } = req.body;
     if (location) {
       location = JSON.parse(location);
     }
-
+console.log(menu)
     const user = await User.findByIdAndUpdate(
-      merchantId,
+      req.user._id,
       {
         ...objToSave,
         ...(location && { "location.coordinates": location.coordinates }),
         ...(galleryImg && { $addToSet: { gallery: { $each: gallery } } }),
+        ...(menuImg && { $addToSet: { menu: { $each: menu } } }),
       },
 
       { new: true }

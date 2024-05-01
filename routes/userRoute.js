@@ -1,6 +1,6 @@
 import express from "express";
 import * as Controller from "../controllers/index.js";
-import {authenticate, studentRoute} from "../middleware/auth.js";
+import {authenticate} from "../middleware/auth.js";
 const user = express.Router();
 
 // user.patch(

@@ -44,7 +44,7 @@ export const merchantSignupSchema = joi.object({
   title: joi.string().required(),
 });
 export const updatemerchantSchema = joi.object({
-  merchantId: joi.string().hex().length(24).required(),
+  // merchantId: joi.string().hex().length(24).required(),
   name: joi.string(),
   email: joi.string().email(),
   countryCode: joi.string(),
@@ -54,6 +54,7 @@ export const updatemerchantSchema = joi.object({
   profilePic: joi.binary().allow("", null),
   coverPic: joi.binary().allow("", null),
   gallery: joi.array().items(joi.binary()),
+  menu: joi.array().items(joi.binary()),
   location: joi.object({
     apartmentNo: joi.number(),
     street: joi.string(),

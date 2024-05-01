@@ -46,7 +46,8 @@ export const Constants = {
   PASSWORD_CHANGED:"Password changed successfully",
   INVALID_TOKEN:"Please provide valid authentication token",
   INVALID_ID:"Please provide valid ID",
-  ADD_ICON:"Please add a icon"
+  ADD_ICON:"Please add a icon",
+  NOT_AUTHORIZED:"You are not authorized to perform this action"
   
   };
 

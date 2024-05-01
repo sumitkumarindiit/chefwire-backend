@@ -15,7 +15,11 @@ export const authenticate = async (req, res, next) => {
     const token = authHeader.split(" ")[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     User.aggregate([
-      { $match: { _id: new mongoose.Types.ObjectId(decodedToken._id.toString()) } },
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(decodedToken._id.toString()),
+        },
+      },
       ...userCommonAggregation(),
     ]).then(async (usr) => {
       if (!usr || usr.length < 1) {
@@ -156,12 +160,9 @@ export const officerRoute = async (req, res, next) => {
     return Helper.errorMsg(res, Constants.INVALID_TOKEN, 500, err);
   }
 };
-export const studentRoute = async (req, res, next) => {
+export const merchantRoute = async (req, res, next) => {
   try {
-    if (
-      !req.user.role.role ||
-      (req.user.role.role !== "user" && req.user.role.role !== "student")
-    ) {
+    if (req.user.role !== "merchant") {
       return Helper.errorMsg(res, Constants.NOT_AUTHORIZED, 400);
     }
     next();

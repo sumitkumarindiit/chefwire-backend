@@ -8,6 +8,7 @@ import { Notifications } from "../middleware/notification.js";
 import { Constants, SocketEvent } from "../services/Constants.js";
 import mongoose from "mongoose";
 import { imageModeration, textModeration } from "../services/userService.js";
+import User from "../models/userModel.js";
 
 const commentCommonAggregation = () => {
   return [
@@ -271,6 +272,62 @@ export const getAllPost = async (req, res) => {
         $limit: limit,
       },
       {
+        $unwind: {
+          path: "$report",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "report.reportedBy",
+          foreignField: "_id",
+          as: "reportedByUser",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                profilePic: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$reportedByUser",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          postedBy: { $first: "$postedBy" },
+          tags: { $first: "$tags" },
+          media: { $first: "$media" },
+          description: { $first: "$description" },
+          likes: { $first: "$likes" },
+          shares: { $first: "$shares" },
+          report: {
+            $push: {
+              $cond: {
+                if: {
+                  $eq: [{ $ifNull: ["$report", null] }, null],
+                },
+                then: "$$REMOVE",
+                else: {
+                  reportedBy: "$reportedByUser",
+                  message: "$report.message",
+                  time: "$report.time",
+                },
+              },
+            },
+          },
+          createdAt: { $first: "$createdAt" },
+        },
+      },
+      {
         $lookup: {
           from: "users",
           localField: "postedBy",
@@ -324,6 +381,7 @@ export const getAllPost = async (req, res) => {
           ],
         },
       },
+
       {
         $lookup: {
           from: "comments",
@@ -372,155 +430,162 @@ export const getAllPost = async (req, res) => {
           totalCommentsCount: 0,
         },
       },
-      {
-        $lookup: {
-          from: "comments",
-          let: {
-            postId: "$_id",
-          },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    {
-                      $eq: ["$postId", "$$postId"],
-                    },
-                    {
-                      $eq: [
-                        {
-                          $ifNull: ["$parentId", null],
-                        },
-                        null,
-                      ],
-                    },
-                    {
-                      $eq: ["$status", "ACTIVE"],
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              $sort: { createdAt: -1 },
-            },
-            {
-              $limit: 4,
-            },
-            {
-              $lookup: {
-                from: "users",
-                localField: "commentedBy",
-                foreignField: "_id",
-                as: "commentedBy",
-                pipeline: [
-                  {
-                    $project: {
-                      _id: 1,
-                      name: 1,
-                      profilePic: 1,
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              $lookup: {
-                from: "users",
-                localField: "likes",
-                foreignField: "_id",
-                as: "likes",
-                pipeline: [
-                  {
-                    $project: {
-                      _id: 1,
-                      name: 1,
-                      profilePic: 1,
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              $unwind: "$commentedBy",
-            },
-            {
-              $lookup: {
-                from: "users",
-                localField: "mentions.userId",
-                foreignField: "_id",
-                as: "mentionUsers",
-              },
-            },
-            {
-              $addFields: {
-                mentions: {
-                  $map: {
-                    input: "$mentions",
-                    as: "mention",
-                    in: {
-                      user_id: "$$mention.userId",
-                      first_name: {
-                        $arrayElemAt: ["$mentionUsers.name", 0],
-                      },
-                      last_name: {
-                        $arrayElemAt: ["$mentionUsers.name", 0],
-                      },
-                      profile_pic: {
-                        $arrayElemAt: ["$mentionUsers.profilePic", 0],
-                      },
-                      position: "$$mention.position",
-                    },
-                  },
-                },
-              },
-            },
-            {
-              $lookup: {
-                from: "comments",
-                let: {
-                  commentId: "$_id",
-                },
-                pipeline: [
-                  {
-                    $match: {
-                      $expr: {
-                        $eq: ["$parentId", "$$commentId"], // Match replies with the current comment's _id as parent_id
-                      },
-                    },
-                  },
-                  {
-                    $count: "replyCount", // Count the number of replies
-                  },
-                ],
-                as: "replies", // Store the replies in a field called "replies"
-              },
-            },
-            {
-              $addFields: {
-                reply_count: {
-                  $sum: "$replies.replyCount",
-                }, // Sum up the reply counts for all replies
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                parentId: 1,
-                postId: 1,
-                commentedBy: 1,
-                media: 1,
-                comment: 1,
-                likes: 1,
-                mentions: 1,
-                createdAt: 1,
-                replyCount: 1,
-              },
-            },
-          ],
-          as: "comments",
-        },
-      },
+      // {
+      //   $lookup: {
+      //     from: "comments",
+      //     let: {
+      //       postId: "$_id",
+      //     },
+      //     pipeline: [
+      //       {
+      //         $match: {
+      //           $expr: {
+      //             $and: [
+      //               {
+      //                 $eq: ["$postId", "$$postId"],
+      //               },
+      //               {
+      //                 $eq: [
+      //                   {
+      //                     $ifNull: ["$parentId", null],
+      //                   },
+      //                   null,
+      //                 ],
+      //               },
+      //               {
+      //                 $eq: ["$status", "ACTIVE"],
+      //               },
+      //             ],
+      //           },
+      //         },
+      //       },
+      //       {
+      //         $sort: { createdAt: -1 },
+      //       },
+      //       {
+      //         $limit: 4,
+      //       },
+      //       {
+      //         $lookup: {
+      //           from: "users",
+      //           localField: "commentedBy",
+      //           foreignField: "_id",
+      //           as: "commentedBy",
+      //           pipeline: [
+      //             {
+      //               $project: {
+      //                 _id: 1,
+      //                 name: 1,
+      //                 profilePic: 1,
+      //               },
+      //             },
+      //           ],
+      //         },
+      //       },
+      //       {
+      //         $lookup: {
+      //           from: "users",
+      //           localField: "likes",
+      //           foreignField: "_id",
+      //           as: "likes",
+      //           pipeline: [
+      //             {
+      //               $project: {
+      //                 _id: 1,
+      //                 name: 1,
+      //                 profilePic: 1,
+      //               },
+      //             },
+      //           ],
+      //         },
+      //       },
+      //       {
+      //         $unwind: "$commentedBy",
+      //       },
+      //       {
+      //         $lookup: {
+      //           from: "users",
+      //           localField: "mentions.userId",
+      //           foreignField: "_id",
+      //           as: "mentionUsers",
+      //         },
+      //       },
+      //       {
+      //         $addFields: {
+      //           mentions: {
+      //             $map: {
+      //               input: "$mentions",
+      //               as: "mention",
+      //               in: {
+      //                 user_id: "$$mention.userId",
+      //                 first_name: {
+      //                   $arrayElemAt: ["$mentionUsers.name", 0],
+      //                 },
+      //                 last_name: {
+      //                   $arrayElemAt: ["$mentionUsers.name", 0],
+      //                 },
+      //                 profile_pic: {
+      //                   $arrayElemAt: ["$mentionUsers.profilePic", 0],
+      //                 },
+      //                 position: "$$mention.position",
+      //               },
+      //             },
+      //           },
+      //         },
+      //       },
+      //       {
+      //         $lookup: {
+      //           from: "comments",
+      //           let: {
+      //             commentId: "$_id",
+      //           },
+      //           pipeline: [
+      //             {
+      //               $match: {
+      //                 $expr: {
+      //                   $and: [
+      //                     {
+      //                       $eq: ["$parentId", "$$commentId"],
+      //                     },
+      //                     {
+      //                       $eq: ["$status", Constants.ACTIVE],
+      //                     },
+      //                   ],
+      //                 },
+      //               },
+      //             },
+      //             {
+      //               $count: "replyCount", // Count the number of replies
+      //             },
+      //           ],
+      //           as: "replies", // Store the replies in a field called "replies"
+      //         },
+      //       },
+      //       {
+      //         $addFields: {
+      //           replyCount: {
+      //             $sum: "$replies.replyCount",
+      //           }, // Sum up the reply counts for all replies
+      //         },
+      //       },
+      //       {
+      //         $project: {
+      //           _id: 1,
+      //           parentId: 1,
+      //           postId: 1,
+      //           commentedBy: 1,
+      //           media: 1,
+      //           comment: 1,
+      //           likes: 1,
+      //           mentions: 1,
+      //           createdAt: 1,
+      //           replyCount: 1,
+      //         },
+      //       },
+      //     ],
+      //     as: "comments",
+      //   },
+      // },
     ];
 
     const posts = await Post.aggregate(matchCriteria);
@@ -554,7 +619,7 @@ export const getAllCommentsOfPost = async (req, res) => {
     {
       $limit: limit,
     },
-    ...commentCommonAggregation(skip, limit),
+    ...commentCommonAggregation(),
   ];
 
   try {
@@ -606,7 +671,7 @@ export const getAllRepliesOfComments = async (req, res) => {
     const replies = await Comment.aggregate(criteria);
     return Helper.successMsg(res, Constants.DATA_FETCHED, replies);
   } catch (err) {
-    Helper.catchBlock(req,res,null,err);
+    Helper.catchBlock(req, res, null, err);
   }
 };
 
@@ -794,6 +859,27 @@ export const commentPost = async (req, res, next) => {
     Helper.catchBlock(req, res, next, err);
   }
 };
+export const savePost = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.postIdSchema, req.body, res))
+      return;
+    const { postId } = req.body;
+    const post = await Post.findById(postId);
+    if (!post) {
+      return Helper.errorMsg(res, Constants.INVALID_ID, 200);
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $addToSet: { savedPosts: postId },
+      },
+      { new: true }
+    );
+    return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
 export const likeComment = async (req, res, next) => {
   try {
     if (Helper.validateRequest(validatePost.likeCmtSchema, req.body, res))
@@ -856,69 +942,68 @@ export const unLikeComment = async (req, res, next) => {
     Logs(req, Constants.DATA_UPDATED, next);
     return Helper.successMsg(res, Constants.DATA_UPDATED, like);
   } catch (err) {
-    Helper.catchBlock(req,res,next,err);
+    Helper.catchBlock(req, res, next, err);
   }
 };
-// export const deleteComment = async (req, res, next) => {
-//   try {
-//     if (Helper.validateRequest(validatePost.commentIdSchema, req.body, res))
-//       return;
-//     await Comment.findByIdAndDelete(req.body.comment_id);
-//     await deleteChildComments(req.body.comment_id);
+export const deleteComment = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.commentIdSchema, req.query, res))
+      return;
+    await Comment.findByIdAndDelete(req.body.commentId);
+    await deleteChildComments(req.body.commentId);
 
-//     Logs(req, Constants.DATA_DELETED, next);
-//     return Helper.successMsg(res, Constants.DATA_DELETED, {});
-//   } catch (err) {
-//     console.log(err);
-//     Logs(req, Constants.SOMETHING_WRONG, next);
-//     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
-//   }
-// };
-// export const deletePost = async (req, res, next) => {
-//   try {
-//     if (Helper.validateRequest(validatePost.postIdSchema, req.body, res))
-//       return;
-//     const post = await Post.findOneAndUpdate(
-//       { _id: req.body.post_id, posted_by: req.user._id },
-//       {
-//         status: Constants.INACTIVE,
-//       },
-//       { new: true }
-//     );
-//     Logs(req, Constants.DATA_DELETED, next);
-//     return Helper.successMsg(res, Constants.DATA_DELETED, {});
-//   } catch (err) {
-//     console.log(err);
-//     Logs(req, Constants.SOMETHING_WRONG, next);
-//     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
-//   }
-// };
-// export const reportPost = async (req, res, next) => {
-//   try {
-//     if (Helper.validateRequest(validatePost.reportSchema, req.body, res))
-//       return;
-//     const report = await Post.findByIdAndUpdate(
-//       req.body.post_id,
-//       {
-//         $addToSet: {
-//           report: {
-//             reported_by: req.user._id,
-//             message: req.body.message,
-//           },
-//         },
-//       },
-//       {
-//         new: true,
-//       }
-//     );
-//     Logs(req, Constants.DATA_REPORTED, next);
-//     return Helper.successMsg(res, Constants.DATA_REPORTED, {});
-//   } catch (err) {
-//     console.log(err);
-//     Logs(req, Constants.SOMETHING_WRONG, next);
-//     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
-//   }
-// };
+    Logs(req, Constants.DATA_DELETED, next);
+    return Helper.successMsg(res, Constants.DATA_DELETED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const deletePost = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.postIdSchema, req.body, res))
+      return;
+    console.log(req.body.postId, req.user._id);
+    const post = await Post.findOneAndUpdate(
+      { _id: req.body.postId, postedBy: req.user._id },
+      {
+        status: Constants.INACTIVE,
+      },
+      { new: true }
+    );
+    if (!post) {
+      Logs(req, Constants.INVALID_ID, next);
+      return Helper.errorMsg(res, Constants.INVALID_ID, 200);
+    }
+    Logs(req, Constants.DATA_DELETED, next);
+    return Helper.successMsg(res, Constants.DATA_DELETED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const reportPost = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.reportSchema, req.body, res))
+      return;
+    const report = await Post.findByIdAndUpdate(
+      req.body.postId,
+      {
+        $addToSet: {
+          report: {
+            reportedBy: req.user._id,
+            message: req.body.message,
+          },
+        },
+      },
+      {
+        new: true,
+      }
+    );
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
 // export const reportComment = async (req, res, next) => {
 //   try {
 //     if (Helper.validateRequest(validatePost.reportCmtSchema, req.body, res))
@@ -945,24 +1030,24 @@ export const unLikeComment = async (req, res, next) => {
 //     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
 //   }
 // };
-// export const getAllLikedUsersOfPost = async (req, res) => {
-//   try {
-//     const { post_id } = req.query;
-//     const posts = await Post.findById(post_id)
-//       .populate("likes", "_id first_name last_name profile_pic")
-//       .select("_id likes");
-//     return Helper.successMsg(res, Constants.DATA_GET, posts);
-//   } catch (err) {
-//     console.log(err);
-//     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
-//   }
-// };
-// async function deleteChildComments(parentId) {
-//   const childComments = await Comment.find({ parent_id: parentId });
+export const getAllLikedUsersOfPost = async (req, res) => {
+  try {
+    if (Helper.validateRequest(validatePost.postIdSchema, req.query, res))
+      return;
+    const { postId } = req.query;
+    const posts = await Post.findById(postId)
+      .populate("likes", "name profilePic")
+      .select("_id likes");
+    return Helper.successMsg(res, Constants.DATA_FETCHED, posts);
+  } catch (err) {
+    Helper.catchBlock(req,res,null,err);
+  }
+};
+async function deleteChildComments(parentId) {
+  const childComments = await Comment.find({ parentId: parentId });
 
-//   // Recursively delete child comments
-//   for (const comment of childComments) {
-//     await deleteChildComments(comment._id); // Recursively delete child comments of the child
-//     await Comment.findByIdAndDelete(comment._id); // Delete the child comment
-//   }
-// }
+  for (const comment of childComments) {
+    await deleteChildComments(comment._id); // Recursively delete child comments of the child
+  }
+  await Comment.deleteMany({ _id: { $in: childComments.map((c) => c._id) } });
+}

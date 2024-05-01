@@ -35,7 +35,8 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
-    gallery:[String],
+    gallery: [String],
+    menu: [String],
     location: {
       type: {
         type: String,
@@ -48,7 +49,7 @@ const userSchema = new Schema(
         index: "2dsphere",
       },
     },
-    
+
     openingHours: [String],
     services: [
       {
@@ -118,7 +119,7 @@ const userSchema = new Schema(
         time: { type: Date, default: Date.now() },
       },
     ],
-
+    savedPosts: [{ type: Schema.Types.ObjectId, ref: "Post", index: true }],
     status: {
       type: String,
       enum: [Constants.ACTIVE, Constants.INACTIVE],
