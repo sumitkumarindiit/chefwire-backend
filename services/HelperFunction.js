@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import Sib from "sib-api-v3-sdk";
 import twilio from "twilio";
 import Order from "../models/orderModel.js";
+import { Constants } from "./Constants.js";
+import { Logs } from "../middleware/log.js";
 
 export const authUser = (obj) => {
   return jwt.sign(obj, process.env.JWT_SECRET, {
@@ -114,7 +116,7 @@ export const HowManyOrderByUser = async (userId) => {
     endOfToday.setHours(23, 59, 59, 999);
     const orders = await Order.find({
       userId,
-      status:"COMPLETED",
+      status: "COMPLETED",
       createdAt: { $gte: startOfToday, $lte: endOfToday },
     });
     return orders.length;
@@ -123,19 +125,25 @@ export const HowManyOrderByUser = async (userId) => {
     return null;
   }
 };
-export const extractHashtags=(sentence) =>{
+export const extractHashtags = (sentence) => {
   const regex = /#\w+/g;
   const hashtags = sentence.match(regex);
   return hashtags || [];
-}
-export const Sender =(req)=>{
+};
+export const Sender = (req) => {
   return {
     _id: req.user._id,
     name: req.user.name,
     profilePic: req.user.profilePic,
   };
-}
-export const generateOrderId=() =>{
+};
+export const generateOrderId = () => {
   const randomNumber = Math.floor(Math.random() * 900000) + 100000;
-  return "ORDR"+randomNumber.toString();
-}
+  return "ORDR" + randomNumber.toString();
+};
+
+export const catchBlock = (req,res,next,err) => {
+  console.error(err);
+  next && Logs(req, Constants.SOMETHING_WRONG, next);
+  return errorMsg(res, Constants.SOMETHING_WRONG, 500);
+};

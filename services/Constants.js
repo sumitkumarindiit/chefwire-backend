@@ -7,10 +7,12 @@ export const SocketEvent = {
   NEW_MESSAGE_EVENT: "newMessage",
   NEW_CHAT_EVENT: "newChat",
   COMMENT_POST_EVENT: "commentPost",
+  SHARE_POST_EVENT: "sharePost",
   GROUP_MEMBER_ADDED:"groupMemberAdded",
   ONLINE_USERS:"onlineUsers"
 };
 export const Constants = {
+  POST:"POST",
   DB_NAME:"chefwire",
   ACTIVE:"ACTIVE",
   INACTIVE:"INACTIVE",

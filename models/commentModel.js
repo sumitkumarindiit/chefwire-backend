@@ -41,7 +41,7 @@ const commentSchema = new Schema(
     ],
     mentions: [
       {
-        user_id: { type: Schema.Types.ObjectId, ref: 'User',index:true },  
+        userId: { type: Schema.Types.ObjectId, ref: 'User',index:true },  
         position: {
           type:Number
         }
@@ -49,7 +49,7 @@ const commentSchema = new Schema(
     ],
     report: [
       {
-        reported_by: {
+        reportedBy: {
           type: Schema.Types.ObjectId,
           ref: "User",
           index:true

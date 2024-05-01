@@ -1,21 +1,21 @@
 import express from 'express';
 import * as Controller from "../controllers/index.js";
-import {authenticate, studentRoute} from "../middleware/auth.js";
+import {authenticate} from "../middleware/auth.js";
 
 const post = express.Router();
 
 post.post('/create-post',authenticate,Controller.Post.createPost);
-// post.patch('/like',authenticate,studentRoute,Controller.Post.likePost);
-// post.patch('/unlike-post',authenticate,studentRoute,Controller.Post.unLikePost);
-// post.get("/get-posts",authenticate,Controller.Post.getAllPost);
+post.patch('/like',authenticate,Controller.Post.likePost);
+post.patch('/unlike-post',authenticate,Controller.Post.unLikePost);
+post.get("/get-posts",authenticate,Controller.Post.getAllPost);
 // post.get("/get-post-details",authenticate,studentRoute,Controller.Post.getPostDetails);
 // post.get("/get-liked-users",authenticate,studentRoute,Controller.Post.getAllLikedUsersOfPost);
-// post.post("/comment",authenticate,studentRoute,Controller.Post.commentPost);
-// post.get("/get-comments",authenticate,studentRoute,Controller.Post.getAllCommentsOfPost);
-// post.get("/get-replies",authenticate,studentRoute,Controller.Post.getAllRepliesOfComments);
-// post.post("/share-post",authenticate,studentRoute,Controller.Post.sharePost);
-// post.patch("/like-comment",authenticate,studentRoute,Controller.Post.likeComment);
-// post.patch("/unlike-comment",authenticate,studentRoute,Controller.Post.unLikeComment);
+post.post("/comment",authenticate,Controller.Post.commentPost);
+post.get("/get-comments",authenticate,Controller.Post.getAllCommentsOfPost);
+post.get("/get-replies",authenticate,Controller.Post.getAllRepliesOfComments);
+post.patch("/share-post",authenticate,Controller.Post.sharePost);
+post.patch("/like-comment",authenticate,Controller.Post.likeComment);
+post.patch("/unlike-comment",authenticate,Controller.Post.unLikeComment);
 // post.patch("/delete-comment",authenticate,studentRoute,Controller.Post.deleteComment);
 // post.patch("/delete-post",authenticate,studentRoute,Controller.Post.deletePost);
 // post.patch("/report-post",authenticate,studentRoute,Controller.Post.reportPost);

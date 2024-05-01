@@ -27,7 +27,7 @@ const notificationSchema = new Schema(
     },
     type:{
       type:String,
-      enum:["ORDER"],
+      enum:["ORDER","POST"],
       default:"ORDER"
     },
     status: {
