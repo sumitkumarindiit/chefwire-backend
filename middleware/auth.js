@@ -35,8 +35,7 @@ export const authenticate = async (req, res, next) => {
       next();
     });
   } catch (err) {
-    console.log(err);
-    return Helper.errorMsg(res, Constants.INVALID_TOKEN, 500, err);
+    Helper.catchBlock(req,res,null,err)
   }
 };
 

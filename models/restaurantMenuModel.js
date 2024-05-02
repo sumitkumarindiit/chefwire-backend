@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { Constants } from "../services/Constants.js";
 
 const Schema = mongoose.Schema;
 const restaurantMenuSchema = new Schema(
@@ -27,6 +28,11 @@ const restaurantMenuSchema = new Schema(
     },
     price: [{ size: { type: String }, price: { type: Number } }],
     profilePic: { type: String },
+    status: {
+      type: String,
+      enum: [Constants.ACTIVE, Constants.INACTIVE, "CANCELLED","COMPLETED"],
+      default: Constants.ACTIVE,
+    },
   },
   { timestamps: true }
 );

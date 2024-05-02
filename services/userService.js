@@ -301,25 +301,9 @@ export const merchantCommonAggregation = (profile) => {
     },
     {
       $lookup:{
-        from:"qas",
+        from:"qnas",
         localField:"_id",
-        foreignField:"reataurantId",
-        as:"Q&A",
-        pipeline:[
-          {
-            $project:{
-              question:1,
-              answer:1
-            }
-          }
-        ]
-      }
-    },
-    {
-      $lookup:{
-        from:"qas",
-        localField:"_id",
-        foreignField:"reataurantId",
+        foreignField:"restaurantId",
         as:"Q&A",
         pipeline:[
           {

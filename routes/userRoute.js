@@ -9,7 +9,8 @@ const user = express.Router();
 //   Controller.User.changePassword
 // );
 user.put("/add-or-update-address",authenticate,Controller.User.addOrUpdateAddress);
-// user.post("/cancel-request",authenticate,studentRoute,Controller.Action.cancelFriendRequest);
+user.patch("/follow",authenticate,Controller.User.follow);
+user.patch("/unfollow",authenticate,Controller.User.unFollow);
 // user.post("/cancel-sent-request",authenticate,studentRoute,Controller.Action.cancelSentFriendRequest);
 // user.post("/accept-request",authenticate,studentRoute,Controller.Action.acceptFriendRequest);
 // user.get("/all-received-request",authenticate,studentRoute,Controller.Action.getAllReciedFriendRequest);

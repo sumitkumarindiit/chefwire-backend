@@ -7,6 +7,7 @@ const restaurant = express.Router();
 restaurant.get("/get-categories",authenticate,Controller.Restaurant.getRestaurantCategory);
 restaurant.get("/get-restaurant-menu",authenticate,Controller.Restaurant.getRestaurantMenu);
 restaurant.post("/make-order",authenticate,Controller.Restaurant.makeOrder);
+restaurant.post("/add-cart",authenticate,Controller.Restaurant.addToCart);
 
 
 

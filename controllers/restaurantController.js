@@ -16,6 +16,7 @@ import RestaurantMenu from "../models/restaurantMenuModel.js";
 import Order from "../models/orderModel.js";
 import user from "../routes/userRoute.js";
 import { Notifications } from "../middleware/notification.js";
+import Cart from "../models/cartModel.js";
 
 export const getRestaurantCategory = async (req, res) => {
   try {
@@ -73,10 +74,10 @@ export const makeOrder = async (req, res) => {
   try {
     if (Helper.validateRequest(validatePost.makeOrderSchema, req.body, res))
       return;
-    const orderId =Helper.generateOrderId();
-    const isOrder = await Order.findOne({orderId});
-    if(isOrder){
-      return makeOrder(req,res)
+    const orderId = Helper.generateOrderId();
+    const isOrder = await Order.findOne({ orderId });
+    if (isOrder) {
+      return makeOrder(req, res);
     }
     const result = await Order.create({
       userId: req.user._id,
@@ -107,6 +108,73 @@ export const makeOrder = async (req, res) => {
       null,
       payload
     );
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+  } catch (err) {
+    console.log("Errors", err);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+export const addToCart = async (req, res) => {
+  try {
+    if (Helper.validateRequest(validatePost.addCartSchema, req.body, res))
+      return;
+    const { items } = req.body;
+
+    const checkPrice = await Helper.validateCartItems(items);
+    if (checkPrice.length > 0) {
+      return Helper.errorMsg(res, checkPrice, 200);
+    }
+    const existingCart = await Cart.findOne({ userId: req.user._id }).populate(
+      "items.restaurantMenuId"
+    );
+
+    if (!existingCart) {
+      const newCart = new Cart({ userId: req.user._id, items });
+      await newCart.save();
+      return Helper.successMsg(res, Constants.DATA_CREATED, newCart);
+    }
+    const restaurantIdsSet = new Set();
+    await Promise.all(
+      items.map(async (item) => {
+        const restaurantMenu = await RestaurantMenu.findById(
+          item.restaurantMenuId
+        );
+        if (restaurantMenu) {
+          restaurantIdsSet.add(restaurantMenu.restaurantId.toString());
+        }
+      })
+    );
+
+    const restaurantIds = Array.from(restaurantIdsSet);
+    if (restaurantIds.length > 1) {
+      return Helper.errorMsg(
+        res,
+        "Items contains more than one restaurant",
+        200
+      );
+    }
+    const sameRestaurant =
+      restaurantIds[0] ===
+      existingCart.items[0].restaurantMenuId.restaurantId.toString();
+    if (!sameRestaurant) {
+      existingCart.items = items;
+      await existingCart.save();
+      return Helper.successMsg(res, Constants.DATA_UPDATED, existingCart);
+    }
+
+    items.forEach((newItem) => {
+      const existingItemIndex = existingCart.items.findIndex((item) =>
+        item.restaurantMenuId.equals(newItem.restaurantMenuId)
+      );
+
+      if (existingItemIndex !== -1) {
+        // If menu already exists in the cart, update the cart item based on sizes and menu
+        existingCart.items[existingItemIndex].price = newItem.price;
+      } else {
+        // If menu does not exist in the cart, add it to the cart
+        existingCart.items.push(newItem);
+      }
+    });
     return Helper.successMsg(res, Constants.DATA_CREATED, result);
   } catch (err) {
     console.log("Errors", err);

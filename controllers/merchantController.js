@@ -13,6 +13,8 @@ import mongoose from "mongoose";
 import Category from "../models/categoryModel.js";
 import RestaurantMenu from "../models/restaurantMenuModel.js";
 import Post from "../models/postModel.js";
+import Qna from "../models/qaModel.js";
+import user from "../routes/userRoute.js";
 
 export const signupMerchant = async (req, res) => {
   try {
@@ -189,11 +191,10 @@ export const updateMerchantProfile = async (req, res) => {
       );
       req.body.menu = url;
     }
-    let { location, gallery,menu, ...objToSave } = req.body;
+    let { location, gallery, menu, ...objToSave } = req.body;
     if (location) {
       location = JSON.parse(location);
     }
-console.log(menu)
     const user = await User.findByIdAndUpdate(
       req.user._id,
       {
@@ -369,4 +370,95 @@ export const createMenu = async (req, res, next) => {
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
-
+export const createQna = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.QnaSchema, req.body, res)) return;
+    const faq = await Qna.create({ restaurantId: req.user._id, ...req.body });
+    if (!faq) {
+      Logs(req, Constants.DATA_NOT_CREATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 400);
+    }
+    Logs(req, Constants.DATA_CREATED, next);
+    return Helper.successMsg(res, Constants.DATA_CREATED, faq);
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const updateQna = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.updateQnaSchema, req.body, res))
+      return;
+    const { qnaId, ...rest } = req.body;
+    const faq = await Qna.findByIdAndUpdate(qnaId, rest);
+    if (!faq) {
+      Logs(req, Constants.DATA_NOT_UPDATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_UPDATED, 400);
+    }
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const updateQnaOrder = async (req, res, next) => {
+  try {
+    if (
+      Helper.validateRequest(validatePost.updateQnaOrderSchema, req.body, res)
+    )
+      return;
+    const bulkOps = req.body.map((update) => ({
+      updateOne: {
+        filter: { _id: update.qnaId },
+        update: { order: update.order },
+      },
+    }));
+    const result = await Qna.bulkWrite(bulkOps);
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_UPDATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_UPDATED, 400);
+    }
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const getQnq = async (req, res) => {
+  try {
+    if (Helper.validateRequest(validatePost.getQnaSchema, req.query, res))
+      return;
+    const { qnaId, restaurantId, type } = req.query;
+    if (req.user.role === "user" && restaurantId) {
+      return Helper.errorMsg(res, Constants.NOT_AUTHORIZED, 200);
+    }
+    let match = {};
+    if (qnaId) {
+      match = { _id: qnaId };
+    }
+    if (restaurantId) {
+      match = { restaurantId, ...(!type && { status: Constants.ACTIVE }) };
+    }
+    console.log(match)
+    const faq = await Qna.find(match)
+      .select("question answer")
+      .sort({ order: 1 });
+    return Helper.successMsg(res, Constants.DATA_FETCHED, faq);
+  } catch (err) {
+    Helper.catchBlock(req, res, null, err);
+  }
+};
+export const deleteQna = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.idSchema, req.query, res)) return;
+    const { id } = req.query;
+    const faq = await Qna.findByIdAndDelete(id);
+    if (!faq) {
+      Logs(req, Constants.DATA_NOT_DELETED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_DELETED, 400);
+    }
+    Logs(req, Constants.DATA_DELETED, next);
+    return Helper.successMsg(res, Constants.DATA_DELETED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};

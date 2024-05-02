@@ -1,11 +1,9 @@
 import User from "../models/userModel.js";
-import Post from "../models/postModel.js";
 import bcrypt from "bcrypt";
 import * as Helper from "../services/HelperFunction.js";
 import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants } from "../services/Constants.js";
 import { Logs } from "../middleware/log.js";
-import { findMutualFriends } from "../services/userService.js";
 import uploadToS3 from "../services/s3Services.js";
 import Notification from "../models/notificationModel.js";
 import { userCommonAggregation } from "../services/userService.js";
@@ -160,7 +158,7 @@ export const addOrUpdateAddress = async (req, res, next) => {
     if (Helper.validateRequest(validateUser.updateAddressSchema, req.body, res))
       return;
     const { addressType, ...objToSave } = req.body;
-   const result= await Address.findOneAndUpdate(
+    const result = await Address.findOneAndUpdate(
       { addressId: req.user._id, addressType },
       objToSave,
       { new: true, upsert: true }
@@ -197,7 +195,64 @@ export const deleteNotifications = async (req, res) => {
     });
     return Helper.successMsg(res, Constants.DATA_DELETED, notifications);
   } catch (err) {
-    console.error(err);
-    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+    Helper.catchBlock(req, res, null, err);
+  }
+};
+export const follow = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validateUser.userIdSchema, req.body, res))
+      return;
+    const { userId } = req.body;
+    const user = await User.findById(userId).select("followers").lean();
+    console.log(user);
+    const isAlreadyFollowing = user.followers?.some((usr) =>
+      usr.userId.equals(req.user._id)
+    );
+    if (isAlreadyFollowing) {
+      return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+    }
+    const [followUser, followedUser] = await Promise.all([
+      User.findByIdAndUpdate(
+        req.user._id,
+        { $addToSet: { followings: { userId: userId } } },
+        {
+          new: true,
+        }
+      ),
+      User.findOneAndUpdate(
+        { _id: userId },
+        { $addToSet: { followers: { userId: req.user._id } } },
+        { new: true }
+      ),
+    ]);
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const unFollow = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validateUser.userIdSchema, req.body, res))
+      return;
+    const { userId } = req.body;
+    const [followingUser, followedUser] = await Promise.all([
+      User.findByIdAndUpdate(
+        req.user._id,
+        { $pull: { followings: { userId: userId } } },
+        {
+          new: true,
+        }
+      ),
+      User.findOneAndUpdate(
+        { _id: userId },
+        { $pull: { followers: { userId: req.user._id } } },
+        { new: true }
+      ),
+    ]);
+    Logs(req, Constants.DATA_UPDATED, next);
+    return Helper.successMsg(res, Constants.DATA_UPDATED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
   }
 };
