@@ -172,19 +172,13 @@ export const chatSchema = joi.object({
   message_file: joi.binary(),
 });
 export const updateUserSchema = joi.object({
-  first_name: joi.string(),
-  last_name: joi.string(),
+  name: joi.string(),
+  profession: joi.string(),
   email: joi.string().email(),
-  phone_number: joi.string().min(10).max(10),
-  country: joi.string(),
-  country_code: joi.string(),
-  state: joi.string(),
-  state_code: joi.string(),
-  city: joi.string(),
-  zip_code: joi.string().min(3).max(8),
-  cover_photo: joi.any(),
-  about: joi.string(),
-  profile_pic: joi.string().allow(""),
+  mobileNumber: joi.string(),
+  countryCode: joi.string(),
+  bio: joi.string(),
+  profilePic: joi.binary(),
 });
 export const updateAddressSchema = joi.object({
   apartmentNo: joi.string(),
@@ -200,3 +194,7 @@ export const updateAddressSchema = joi.object({
   addressTitle: joi.string(),
   coordinates: joi.array().items(joi.number()),
 });
+export const couponIdSchema=joi.object({
+  couponId:joi.string().hex().length(24).required()
+})
+

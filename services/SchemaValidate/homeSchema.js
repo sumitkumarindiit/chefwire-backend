@@ -74,12 +74,13 @@ export const couponSchema = joi.object({
   discountType: joi.string().valid("FLAT", "UPTO"),
   validTill: joi.date(),
   isGlobal: joi.boolean().strict(true),
-  users: joi.array().items(
+  eligibleUsers: joi.array().items(
     joi.object({
       userId: joi.string().hex().length(24).required(),
       validTill: joi.date(),
     })
   ),
+  excludedUsers: joi.array().items(joi.string().hex().length(24).required()),
 });
 export const menuSchema = joi.object({
   categoryId: joi.string().hex().length(24).required(),

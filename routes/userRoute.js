@@ -1,19 +1,20 @@
 import express from "express";
 import * as Controller from "../controllers/index.js";
-import {authenticate} from "../middleware/auth.js";
+import { authenticate } from "../middleware/auth.js";
 const user = express.Router();
 
-// user.patch(
-//   "/change-password",
-//   authenticate,
-//   Controller.User.changePassword
-// );
-user.put("/add-or-update-address",authenticate,Controller.User.addOrUpdateAddress);
-user.patch("/follow",authenticate,Controller.User.follow);
-user.patch("/unfollow",authenticate,Controller.User.unFollow);
-// user.post("/cancel-sent-request",authenticate,studentRoute,Controller.Action.cancelSentFriendRequest);
-// user.post("/accept-request",authenticate,studentRoute,Controller.Action.acceptFriendRequest);
-// user.get("/all-received-request",authenticate,studentRoute,Controller.Action.getAllReciedFriendRequest);
+user.patch("/change-password", authenticate, Controller.User.changePassword);
+user.put(
+  "/add-or-update-address",
+  authenticate,
+  Controller.User.addOrUpdateAddress
+);
+user.patch("/follow", authenticate, Controller.User.follow);
+user.patch("/unfollow", authenticate, Controller.User.unFollow);
+user.get("/my-reviews", authenticate, Controller.User.getReviews);
+user.get("/follower-list",authenticate,Controller.User.getFollowerList);
+user.get("/following-list",authenticate,Controller.User.getFollowingList);
+user.get("/check-coupon",authenticate,Controller.User.checkCoupon);
 // user.get("/all-sent-request",authenticate,studentRoute,Controller.Action.getAllSentFriendRequest);
 // user.get("/all-friends",authenticate,studentRoute,Controller.Action.getAllFriends);
 // user.patch("/remove-friend",authenticate,studentRoute,Controller.Action.removeFriends);
@@ -26,12 +27,12 @@ user.patch("/unfollow",authenticate,Controller.User.unFollow);
 // user.patch("/delete-chat",authenticate,studentRoute,Controller.Action.deleteChat);
 // user.get("/get-chats",authenticate,studentRoute,Controller.Action.getAllChats);
 // user.patch("/delete-group",authenticate,studentRoute,Controller.Action.deleteGroup);
-user.get("/get-user-profile",authenticate,Controller.User.getUserProfile);
+user.get("/get-user-profile", authenticate, Controller.User.getUserProfile);
 // user.post("/send-message",authenticate,studentRoute,Controller.Action.sendMessage);
 // user.get("/get-chat-message",authenticate,studentRoute,Controller.Action.getMessages);
 // user.post("/create-chat",authenticate,studentRoute,Controller.Action.createOrGetAOneOnOneChat);
 // user.get("/get-all-user-list",authenticate,Controller.User.getAllUsers);
-// user.put("/update-user",authenticate,studentRoute,Controller.User.updateUser);
+user.put("/update-user", authenticate, Controller.User.updateUser);
 // user.get("/get-notifications",authenticate,Controller.User.getNotifications);
 // user.patch("/delete-notifications",authenticate,studentRoute,Controller.User.deleteNotifications);
 // user.get("/get-suggestions",authenticate,studentRoute,Controller.User.suggestFriendList);
@@ -42,7 +43,6 @@ user.get("/get-user-profile",authenticate,Controller.User.getUserProfile);
 // user.patch("/update-unread-messages",authenticate,studentRoute,Controller.Action.updateUnreadMessages);
 
 export default user;
-
 
 /** CHANGE_PASSWORD */
 /**
@@ -137,7 +137,6 @@ export default user;
  *        description: Server Error
  */
 
-
 /** ACCEPT FRIEND REQUEST */
 /**
  * @swagger
@@ -167,7 +166,6 @@ export default user;
  *        description: Server Error
  */
 
-
 /** ALL RECEIVED FRIEND REQUEST */
 /**
  * @swagger
@@ -188,7 +186,6 @@ export default user;
  *      500:
  *        description: Server Error
  */
-
 
 /** ALL SENT FRIEND REQUEST */
 /**
@@ -211,7 +208,6 @@ export default user;
  *        description: Server Error
  */
 
-
 /** GET ALL FRIENDS */
 /**
  * @swagger
@@ -232,7 +228,6 @@ export default user;
  *      500:
  *        description: Server Error
  */
-
 
 /** REMOVE FRIEND */
 /**
@@ -291,7 +286,6 @@ export default user;
  *        description: Server Error
  */
 
-
 /** MAKE GROUP */
 /**
  * @swagger
@@ -347,7 +341,7 @@ export default user;
  *         description: The ID of the group to get members from
  *     responses:
  *      200:
- *        description: Data fetched 
+ *        description: Data fetched
  *      404:
  *        description: Invalid group id
  *      500:
@@ -364,7 +358,7 @@ export default user;
  *     summary: Get all group
  *     responses:
  *      200:
- *        description: Data fetched 
+ *        description: Data fetched
  *      404:
  *        description: Invalid group id
  *      500:
@@ -381,7 +375,7 @@ export default user;
  *     summary: Get all chats
  *     responses:
  *      200:
- *        description: Data fetched 
+ *        description: Data fetched
  *      404:
  *        description: Invalid group id
  *      500:
@@ -405,7 +399,7 @@ export default user;
  *         description: The ID of the user to get
  *     responses:
  *      200:
- *        description: Data fetched 
+ *        description: Data fetched
  *      404:
  *        description: Invalid group id
  *      500:
@@ -434,10 +428,9 @@ export default user;
  *                default: 658c0ca8ffd678b1913fce54
  *     responses:
  *      200:
- *        description: Data fetched 
+ *        description: Data fetched
  *      404:
  *        description: Invalid group id
  *      500:
  *        description: Server Error
  */
-

@@ -110,6 +110,8 @@ export const userCommonAggregation = (profile) => {
   let project = {
     __v: 0,
     updatedAt: 0,
+    followers: 0,
+    followings: 0,
     createdAt: 0,
   };
   if (profile) {
@@ -118,6 +120,8 @@ export const userCommonAggregation = (profile) => {
       createdAt: 0,
       updatedAt: 0,
       status: 0,
+      followers: 0,
+      followings: 0,
       mobileVerified: 0,
       deviceToken: 0,
       jwtToken: 0,
@@ -158,7 +162,7 @@ export const userCommonAggregation = (profile) => {
         pipeline: [
           {
             $match: {
-              addressType:"CURRENT",
+              addressType: "CURRENT",
             },
           },
           {
@@ -288,49 +292,55 @@ export const merchantCommonAggregation = (profile) => {
               updatedAt: 0,
               reviewedId: 0,
               reviewType: 0,
-              userId:0
+              userId: 0,
             },
           },
         ],
       },
     },
     {
-      $addFields:{
-        rating:{$cond:{if:{ $gt: [{ $size: "$reviews" }, 0] }, then: {$avg:"$reviews.rating"},else:0}}
-      }
+      $addFields: {
+        rating: {
+          $cond: {
+            if: { $gt: [{ $size: "$reviews" }, 0] },
+            then: { $avg: "$reviews.rating" },
+            else: 0,
+          },
+        },
+      },
     },
     {
-      $lookup:{
-        from:"qnas",
-        localField:"_id",
-        foreignField:"restaurantId",
-        as:"Q&A",
-        pipeline:[
+      $lookup: {
+        from: "qnas",
+        localField: "_id",
+        foreignField: "restaurantId",
+        as: "Q&A",
+        pipeline: [
           {
-            $project:{
-              question:1,
-              answer:1
-            }
-          }
-        ]
-      }
+            $project: {
+              question: 1,
+              answer: 1,
+            },
+          },
+        ],
+      },
     },
     {
-      $lookup:{
-        from:"addresses",
-        localField:"_id",
-        foreignField:"addressId",
-        as:"address",
-        pipeline:[
+      $lookup: {
+        from: "addresses",
+        localField: "_id",
+        foreignField: "addressId",
+        as: "address",
+        pipeline: [
           {
-            $project:{
-              __v:0,
-              createdAt:0,
-              updatedAt:0
-            }
-          }
-        ]
-      }
+            $project: {
+              __v: 0,
+              createdAt: 0,
+              updatedAt: 0,
+            },
+          },
+        ],
+      },
     },
     {
       $project: project,

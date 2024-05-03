@@ -181,3 +181,33 @@ export const addToCart = async (req, res) => {
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
+export const getCart = async (req, res) => {
+  try {
+    const { userId } = req.user._id;
+const aggregate=[
+  {
+    $match:{
+      userId
+    }
+  },
+  {
+    $lookup:{
+      from:"coupons",
+      localField:"couponId",
+      foreignField:"_id",
+      as:"coupon",
+      pipeline:[
+        
+      ]
+    }
+  }
+]
+    const result = await Cart.aggregate(aggregate);
+   
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+  } catch (err) {
+    console.log("Errors", err);
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+};
+

@@ -1,4 +1,4 @@
-import { required } from "joi";
+
 import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
@@ -11,6 +11,7 @@ const reviewSchema = new Schema({
   },
   reviewedId: {
     type: Schema.Types.ObjectId,
+    ref:"User",
     required: true,
     index: true,
   },

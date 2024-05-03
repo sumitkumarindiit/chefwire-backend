@@ -9,6 +9,8 @@ import Notification from "../models/notificationModel.js";
 import { userCommonAggregation } from "../services/userService.js";
 import mongoose from "mongoose";
 import Address from "../models/addressModel.js";
+import Review from "../models/reviewModel.js";
+import Coupon from "../models/couponModel.js";
 
 export const changePassword = async (req, res, next) => {
   try {
@@ -16,16 +18,13 @@ export const changePassword = async (req, res, next) => {
       Helper.validateRequest(validateUser.changePasswordSchema, req.body, res)
     )
       return;
-    const { old_password, new_password } = req.body;
-    const hashedPassword = await bcrypt.hash(new_password, 10);
-    const user = await User.findOne({
-      email: req.user.email,
-      role: { $eq: null },
-    });
+    const { oldPassword, newPassword } = req.body;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const user = await User.findById(req.user._id);
 
     if (user) {
       const is_correct_password = await bcrypt.compare(
-        old_password,
+        oldPassword,
         user.password
       );
       if (is_correct_password) {
@@ -36,16 +35,14 @@ export const changePassword = async (req, res, next) => {
         return Helper.successMsg(res, Constants.PASSWORD_CHANGED, {});
       } else {
         Logs(req, Constants.INCORRECT_PASSWORD, next);
-        return Helper.errorMsg(res, Constants.INCORRECT_PASSWORD, 404);
+        return Helper.errorMsg(res, Constants.INCORRECT_PASSWORD, 200);
       }
     } else {
       Logs(req, Constants.INCORRECT_PASSWORD, next);
       return Helper.errorMsg(res, Constants.INVALID_TOKEN, 401);
     }
   } catch (err) {
-    console.log(err);
-    Logs(req, Constants.SOMETHING_WRONG, next);
-    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+    return Helper.catchBlock(req, res, next, err);
   }
 };
 export const getUserProfile = async (req, res) => {
@@ -121,36 +118,34 @@ export const getAllUsers = async (req, res) => {
 
 export const updateUser = async (req, res, next) => {
   try {
-    if (Helper.validateRequest(validateUser.updateUserSchema, req.body, res))
+    const file = req.files?.profilePic;
+    if (
+      Helper.validateRequest(
+        validateUser.updateUserSchema,
+        { ...req.body, ...(file && { profilePic: file.data }) },
+        res
+      )
+    )
       return;
-    const file = req.files?.file;
-    const cover_photo = req.files?.cover_photo;
-    let url, cover_url;
+    const isuser = await User.findById(req.user._id).select("email");
+    if (isuser.email !== req.body.email) {
+      const isEmail = await User.findOne({ email: req.body.email });
+      if (isEmail) {
+        return Helper.errorMsg(res, Constants.EMAIL_EXIST, 200);
+      }
+    }
     if (file) {
       const filenamePrefix = Date.now();
       const extension = file.name.split(".").pop();
       const filename = filenamePrefix + "." + extension;
       await uploadToS3(file.data, filename, file.mimetype);
-      url = filename;
+      req.body.profilePic = filename;
     }
-    if (cover_photo) {
-      const filenamePrefix = Date.now();
-      const extension = cover_photo.name.split(".").pop();
-      const filename = filenamePrefix + "." + extension;
-      await uploadToS3(cover_photo.data, filename, cover_photo.mimetype);
-      cover_url = filename;
-    }
-    await User.findByIdAndUpdate(req.user._id, {
-      ...(file && { profile_pic: url }),
-      ...(cover_photo && { cover_photo: cover_url }),
-      ...req.body,
-    });
+    await User.findByIdAndUpdate(req.user._id, req.body);
     Logs(req, Constants.DATA_UPDATED, next);
     return Helper.successMsg(res, Constants.DATA_UPDATED, {});
   } catch (err) {
-    console.log(err);
-    Logs(req, Constants.SOMETHING_WRONG, next);
-    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+    return Helper.catchBlock(req, res, next, err);
   }
 };
 export const addOrUpdateAddress = async (req, res, next) => {
@@ -254,5 +249,113 @@ export const unFollow = async (req, res, next) => {
     return Helper.successMsg(res, Constants.DATA_UPDATED, {});
   } catch (err) {
     Helper.catchBlock(req, res, next, err);
+  }
+};
+export const getReviews = async (req, res, next) => {
+  try {
+    // if (Helper.validateRequest(validateUser.userIdSchema, req.body, res))
+    //   return;
+    // const { userId } = req.body;
+    const aggregate = [
+      {
+        $match: { userId: req.user._id },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "reviewedId",
+          foreignField: "_id",
+          as: "reviewed",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                profilePic: 1,
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const result = await Review.aggregate(aggregate);
+    return Helper.successMsg(res, Constants.DATA_FETCHED, result);
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const getFollowerList = async (req, res, next) => {
+  try {
+    if (
+      Helper.validateRequest(validateUser.userIdSchemaOptional, req.query, res)
+    )
+      return;
+    const { userId } = req.query;
+    let match = userId ? userId : req.user._id;
+
+    const result = await User.findById(match)
+      .select("followers")
+      .populate("followers.userId", "name profilePic");
+    return Helper.successMsg(res, Constants.DATA_FETCHED, result);
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const getFollowingList = async (req, res, next) => {
+  try {
+    if (
+      Helper.validateRequest(validateUser.userIdSchemaOptional, req.query, res)
+    )
+      return;
+    const { userId } = req.query;
+    let match = userId ? userId : req.user._id;
+
+    const result = await User.findById(match)
+      .select("followings")
+      .populate("followings.userId", "name profilePic");
+    return Helper.successMsg(res, Constants.DATA_FETCHED, result);
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const checkCoupon = async (req, res) => {
+  try {
+    if (Helper.validateRequest(validateUser.couponIdSchema, req.query, res))
+      return;
+    const { couponId } = req.query;
+    const coupon = await Coupon.findOne({
+      _id: couponId,
+      status: Constants.ACTIVE,
+      validTill: { $gt: Date.now() },
+    })
+      .select("-__v -status -updateAt -createdAt")
+      .lean();
+    if (!coupon) {
+      return Helper.errorMsg(res, "This coupon is expired", 200);
+    }
+    if (coupon.isGlobal) {
+      if (
+        coupon.excludedUsers
+          .map((id) => id.toString())
+          .includes(req.user._id.toString())
+      ) {
+        return Helper.errorMsg(res, "You already used this coupon", 200);
+      }
+    }
+    if (!coupon.isGlobal) {
+      if (
+        !coupon.eligibleUsers
+          .map((id) => id.toString())
+          .includes(req.user._id.toString())
+      ) {
+        return Helper.errorMsg(
+          res,
+          "You are not eligible for this coupon",
+          200
+        );
+      }
+    }
+    return Helper.successMsg(res,"Coupon verified successfully", coupon);
+  } catch (err) {
+    Helper.catchBlock(req, res, null, err);
   }
 };
