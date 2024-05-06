@@ -1,6 +1,8 @@
 import User from "../models/userModel.js";
 import FormData from "form-data";
 import * as Helper from "./HelperFunction.js";
+import Coupon from "../models/couponModel.js";
+import { Constants } from "./Constants.js";
 export const findMutualFriends = async (my_id, user_id) => {
   try {
     const [user, other_user] = await Promise.all([
@@ -347,3 +349,52 @@ export const merchantCommonAggregation = (profile) => {
     },
   ];
 };
+
+export const validateCoupon =async(req,couponId)=>{
+  try{
+    const coupon = await Coupon.findOne({
+      _id: couponId,
+      status: Constants.ACTIVE,
+      validTill: { $gt: Date.now() },
+    })
+      .select("-__v -status -updateAt -createdAt")
+      .lean();
+    if (!coupon) {
+      return {
+        status:false,
+        message:"This coupon is expired"
+      }
+    }
+    if (coupon.isGlobal) {
+      if (
+        coupon.excludedUsers
+          .map((id) => id.toString())
+          .includes(req.user._id.toString())
+      ) {
+        return {
+          status:false,
+          message:"You already used this coupon"
+        }
+      }
+    }
+    if (!coupon.isGlobal) {
+      if (
+        !coupon.eligibleUsers
+          .map((id) => id.toString())
+          .includes(req.user._id.toString())
+      ) {
+        return {
+          status:false,
+          message:"You are not eligible for this coupon"
+        }
+      }
+    }
+    return {
+      status:true,
+      message:"Coupon verified successfully",
+      data:coupon
+    }
+  }catch(err){
+    return null
+  }
+}

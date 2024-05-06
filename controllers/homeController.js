@@ -14,7 +14,6 @@ import { merchantCommonAggregation } from "../services/userService.js";
 import User from "../models/userModel.js";
 import Notification from "../models/notificationModel.js";
 
-
 const offerAggregation = [
   {
     $match: {
@@ -195,18 +194,26 @@ export const getQuest = async (req, res) => {
       return;
     const { questId } = req.query;
     let totalOrders, completedOrders;
-    let match = { validTill: { $gt: new Date() }, status: Constants.ACTIVE };
+    let match = {
+      validTill: { $gt: new Date() },
+      status: Constants.ACTIVE,
+      excludedUsers: { $not: { $in: [req.user._id] } } 
+    };
     if (questId) {
       match = { _id: new mongoose.Types.ObjectId(questId) };
       let [quest, totalCompOrders] = await Promise.all([
-        Quest.findById(questId).select("questTitle").lean(),
+        Quest.findById(questId)
+          .select("questTitle startedUsers completedUsers failedUsers")
+          .lean(),
         Helper.HowManyOrderByUser(req.user._id),
       ]);
       if (quest.questTitle.toLowerCase() === "order 3 times") {
         totalOrders = 3;
         completedOrders = totalCompOrders;
+        await Helper.updateQuestUsers(req, totalOrders, completedOrders, quest);
       }
     }
+
     const aggregate = [
       {
         $match: match,

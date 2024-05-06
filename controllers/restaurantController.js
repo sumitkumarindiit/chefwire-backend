@@ -9,7 +9,7 @@ import { Constants, SocketEvent } from "../services/Constants.js";
 import Role from "../models/roleAndPermissionModel.js";
 import uploadToS3 from "../services/s3Services.js";
 import Address from "../models/addressModel.js";
-import { merchantCommonAggregation } from "../services/userService.js";
+import { merchantCommonAggregation, validateCoupon } from "../services/userService.js";
 import mongoose from "mongoose";
 import Category from "../models/categoryModel.js";
 import RestaurantMenu from "../models/restaurantMenuModel.js";
@@ -17,6 +17,7 @@ import Order from "../models/orderModel.js";
 import user from "../routes/userRoute.js";
 import { Notifications } from "../middleware/notification.js";
 import Cart from "../models/cartModel.js";
+import Coupon from "../models/couponModel.js";
 
 export const getRestaurantCategory = async (req, res) => {
   try {
@@ -74,15 +75,30 @@ export const makeOrder = async (req, res) => {
   try {
     if (Helper.validateRequest(validatePost.makeOrderSchema, req.body, res))
       return;
+    const {couponId,...objToSave}=req.body;
     const orderId = Helper.generateOrderId();
-    const isOrder = await Order.findOne({ orderId });
-    if (isOrder) {
+    const isOrderID = await Order.findOne({ orderId });
+    if (isOrderID) {
       return makeOrder(req, res);
+    }
+    if(couponId){
+      const coupon = await Coupon.findById(couponId).lean();
+      if(!coupon){
+        return Helper.errorMsg(res,"Invalid coupon",200)
+      }
+      const check = await validateCoupon(req,couponId);
+      if(!check){
+        return Helper.errorMsg(res,"Error while validating coupon", 500);
+      }
+      if(coupon && !coupon.status){
+        return Helper.errorMsg(res, coupon.message, 200);
+      }
     }
     const result = await Order.create({
       userId: req.user._id,
       orderId,
-      ...req.body,
+      ...(couponId && {couponId}),
+      ...objToSave,
     });
     if (!result) {
       return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 200);
@@ -175,7 +191,8 @@ export const addToCart = async (req, res) => {
         existingCart.items.push(newItem);
       }
     });
-    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+    await existingCart.save();
+    return Helper.successMsg(res, Constants.DATA_UPDATED, existingCart);
   } catch (err) {
     console.log("Errors", err);
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
@@ -183,31 +200,167 @@ export const addToCart = async (req, res) => {
 };
 export const getCart = async (req, res) => {
   try {
-    const { userId } = req.user._id;
-const aggregate=[
-  {
-    $match:{
-      userId
-    }
-  },
-  {
-    $lookup:{
-      from:"coupons",
-      localField:"couponId",
-      foreignField:"_id",
-      as:"coupon",
-      pipeline:[
-        
-      ]
-    }
-  }
-]
+    const userId = req.user._id;
+    const aggregate = [
+      {
+        $match: {
+          userId,
+        },
+      },
+      {
+        $lookup: {
+          from: "coupons",
+          localField: "couponId",
+          foreignField: "_id",
+          as: "coupon",
+          pipeline: [
+            {
+              $project: {
+                code: 1,
+                discount: 1,
+                discountType: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          userId: 0,
+          __v: 0,
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      },
+      {
+        $unwind: {
+          path: "$items",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "restaurantmenus",
+          localField: "items.restaurantMenuId",
+          foreignField: "_id",
+          as: "restaurantMenu",
+          pipeline: [
+            {
+              $project: {
+                __v: 0,
+                createdAt: 0,
+                updatedAt: 0,
+                categoryId: 0,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: "$restaurantMenu",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $unwind: {
+          path: "$items.price",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          "items.price.size": {
+            $cond: {
+              if: {
+                $in: ["$items.price.sizeId", "$restaurantMenu.price._id"],
+              },
+              then: {
+                $let: {
+                  vars: {
+                    matchedPrice: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: "$restaurantMenu.price",
+                            as: "price",
+                            cond: {
+                              $eq: ["$$price._id", "$items.price.sizeId"],
+                            },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: "$$matchedPrice.size",
+                },
+              },
+              else: "",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          "restaurantMenu.price": 0,
+        },
+      },
+      {
+        $group: {
+          _id: "$items.restaurantMenu._id",
+          coupon: {
+            $first: "$coupon",
+          },
+          items: {
+            $push: {
+              price: "$items.price",
+              restaurantMenu: "$restaurantMenu",
+            },
+          },
+        },
+      },
+    ];
     const result = await Cart.aggregate(aggregate);
-   
-    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+    const transformedData = result.map((cart) => {
+      const map = new Map();
+      const items = cart.items.reduce((acc, item) => {
+        const index = map.get(item.restaurantMenu._id.toString());
+        if (index === undefined) {
+          map.set(item.restaurantMenu._id.toString(), acc.length);
+          acc.push({
+            price: [
+              {
+                sizeId: item.price.sizeId,
+                unitPrice: item.price.unitPrice,
+                quantity: item.price.quantity,
+                _id: item.price._id,
+                size: item.price.size,
+              },
+            ],
+            restaurantMenu: item.restaurantMenu,
+          });
+        } else {
+          acc[index].price.push({
+            sizeId: item.price.sizeId,
+            unitPrice: item.price.unitPrice,
+            quantity: item.price.quantity,
+            _id: item.price._id,
+            size: item.price.size,
+          });
+        }
+        return acc;
+      }, []);
+
+      return {
+        ...cart,
+        items,
+      };
+    });
+
+    return Helper.successMsg(res, Constants.DATA_FETCHED, transformedData);
   } catch (err) {
     console.log("Errors", err);
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
-

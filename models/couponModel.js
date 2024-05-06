@@ -30,7 +30,7 @@ const couponSchema = new Schema(
     eligibleUsers: [
       {
         userId: { type: Schema.Types.ObjectId, ref: "User", index: true },
-        validTill: { type: Date },
+        expireTime: { type: Date },
       },
     ],
     excludedUsers: [

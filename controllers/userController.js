@@ -6,11 +6,14 @@ import { Constants } from "../services/Constants.js";
 import { Logs } from "../middleware/log.js";
 import uploadToS3 from "../services/s3Services.js";
 import Notification from "../models/notificationModel.js";
-import { userCommonAggregation } from "../services/userService.js";
+import { validateCoupon, userCommonAggregation } from "../services/userService.js";
 import mongoose from "mongoose";
 import Address from "../models/addressModel.js";
 import Review from "../models/reviewModel.js";
 import Coupon from "../models/couponModel.js";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const changePassword = async (req, res, next) => {
   try {
@@ -318,43 +321,68 @@ export const getFollowingList = async (req, res, next) => {
   }
 };
 export const checkCoupon = async (req, res) => {
+  if (Helper.validateRequest(validateUser.couponIdSchema, req.query, res))
+    return;
+  const { couponId } = req.query;
+  const coupon = await validateCoupon(req, couponId);
+  if(!coupon){
+    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+  }
+  if (!coupon.status) {
+    return Helper.errorMsg(res, coupon.message, 200);
+  }
+  return Helper.successMsg(res, coupon.message, coupon.data);
+};
+export const makePayment = async (req, res) => {
   try {
-    if (Helper.validateRequest(validateUser.couponIdSchema, req.query, res))
-      return;
-    const { couponId } = req.query;
-    const coupon = await Coupon.findOne({
-      _id: couponId,
-      status: Constants.ACTIVE,
-      validTill: { $gt: Date.now() },
-    })
-      .select("-__v -status -updateAt -createdAt")
-      .lean();
-    if (!coupon) {
-      return Helper.errorMsg(res, "This coupon is expired", 200);
+    const { products } = req.body;
+    const lineItems = products.map((product) => ({
+      price_data: {
+        currency: "inr",
+        product_data: {
+          name: product.name,
+        },
+        unit_amount: Math.round(product.price * 100),
+      },
+      quantity: product.quantity,
+    }));
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      customer: req.user._id,
+      success_url: "http://localhost:3000/success",
+      cancel_url: "http://localhost:3000/cancel",
+    });
+
+    return Helper.successMsg(res, "Payment made successfully", {
+      id: session.id,
+    });
+  } catch (err) {
+    Helper.catchBlock(req, res, null, err);
+  }
+};
+export const getSavedCards = async (req, res) => {
+  try {
+    const customer = await stripe.customers.retrieve(req.user._id);
+    const savedCards = customer.sources.data.filter(
+      (source) => source.object === "card"
+    );
+    return Helper.successMsg(res, Constants.DATA_FETCHED, savedCards);
+  } catch (err) {
+    Helper.catchBlock(req, res, null, err);
+  }
+};
+export const deleteSavedCard = async (req, res) => {
+  try {
+    const detachedPaymentMethod = await stripe.paymentMethods.detach(
+      req.body.paymentMethodId
+    );
+    if (detachedPaymentMethod && detachedPaymentMethod.id === paymentMethodId) {
+      return Helper.successMsg(res, Constants.DATA_DELETED, {});
+    } else {
+      return Helper.errorMsg(res, Constants.DATA_NOT_DELETED, 200);
     }
-    if (coupon.isGlobal) {
-      if (
-        coupon.excludedUsers
-          .map((id) => id.toString())
-          .includes(req.user._id.toString())
-      ) {
-        return Helper.errorMsg(res, "You already used this coupon", 200);
-      }
-    }
-    if (!coupon.isGlobal) {
-      if (
-        !coupon.eligibleUsers
-          .map((id) => id.toString())
-          .includes(req.user._id.toString())
-      ) {
-        return Helper.errorMsg(
-          res,
-          "You are not eligible for this coupon",
-          200
-        );
-      }
-    }
-    return Helper.successMsg(res,"Coupon verified successfully", coupon);
   } catch (err) {
     Helper.catchBlock(req, res, null, err);
   }

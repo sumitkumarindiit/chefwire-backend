@@ -6,6 +6,8 @@ import Order from "../models/orderModel.js";
 import { Constants } from "./Constants.js";
 import { Logs } from "../middleware/log.js";
 import RestaurantMenu from "../models/restaurantMenuModel.js";
+import Quest from "../models/questModel.js";
+import Coupon from "../models/couponModel.js";
 
 export const authUser = (obj) => {
   return jwt.sign(obj, process.env.JWT_SECRET, {
@@ -118,7 +120,97 @@ export const HowManyOrderByUser = async (userId) => {
       status: "COMPLETED",
       createdAt: { $gte: startOfToday, $lte: endOfToday },
     });
+    console.log(orders);
     return orders.length;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+export const updateQuestUsers = async (
+  req,
+  totalOrders,
+  completedOrders,
+  quest
+) => {
+  try {
+    const today = new Date();
+    const expirationDate = new Date(today);
+    expirationDate.setDate(expirationDate.getDate() + 5);
+    expirationDate.setHours(23, 59, 0, 0);
+    const expirationTime = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const completedIds = quest.completedUsers.map((usr) =>
+      usr?.userId?.toString()
+    );
+    const startedIds = quest.startedUsers.map((usr) => usr?.userId?.toString());
+    if (completedOrders === totalOrders) {
+      if (completedIds.includes(req.user._id.toString())) {
+        const expireTime = quest.startedUsers.find(
+          (item) => item.userId.toString() === req.user._id.toString()
+        )?.expireTime;
+        if (expireTime && isExpired(expireTime)) {
+          await Promise.all([
+            Quest.findByIdAndUpdate(quest._id, {
+              $pull: { completedUsers: { userId: req.user._id } },
+            }),
+            Quest.findByIdAndUpdate(quest._id, {
+              $addToSet: { excludedUsers: req.user._id },
+            }),
+            Coupon.findByIdAndUpdate(quest.couponId,{
+              $pull:{eligibleUsers:{userId:req.user._id}}
+            })
+          ]);
+        } else {
+          return true;
+        }
+      } else {
+        await Promise.all([
+          Quest.findByIdAndUpdate(quest._id, {
+            $addToSet: {
+              completedUsers: {
+                userId: req.user._id,
+                expireTime: expirationDate,
+              },
+            },
+          }),
+          Coupon.findByIdAndUpdate(quest.couponId, {
+            $addToSet: {
+              eligibleUsers: {
+                userId: req.user._id,
+                expireTime: expirationDate,
+              },
+            },
+          }),
+        ]);
+        return true;
+      }
+    }
+    if (completedOrders > 0 && completedOrders < totalOrders) {
+      if (startedIds.includes(req.user._id.toString())) {
+        const expireTime = quest.startedUsers.find(
+          (item) => item.userId.toString() === req.user._id.toString()
+        )?.expireTime;
+        if (expireTime && isExpired(expireTime)) {
+          await Promise.all([
+            Quest.findByIdAndUpdate(quest._id, {
+              $pull: { startedUsers: { userId: req.user._id } },
+            }),
+            Quest.findByIdAndUpdate(quest._id, {
+              $addToSet: { excludedUsers: req.user._id },
+            }),
+          ]);
+        } else {
+          return true;
+        }
+      } else {
+        await Quest.findByIdAndUpdate(quest._id, {
+          $addToSet: {
+            startedUsers: { userId: req.user._id, expireTime: expirationTime },
+          },
+        });
+        return true;
+      }
+    }
   } catch (error) {
     console.error(error);
     return null;
@@ -198,4 +290,7 @@ export const validateCartItems = async (items) => {
   } catch (error) {
     throw new Error(`Error validating cart items: ${error.message}`);
   }
+};
+const isExpired = (expireTime) => {
+  return new Date(expireTime) < new Date();
 };

@@ -15,6 +15,7 @@ user.get("/my-reviews", authenticate, Controller.User.getReviews);
 user.get("/follower-list",authenticate,Controller.User.getFollowerList);
 user.get("/following-list",authenticate,Controller.User.getFollowingList);
 user.get("/check-coupon",authenticate,Controller.User.checkCoupon);
+user.post("/make-payment",Controller.User.makePayment);
 // user.get("/all-sent-request",authenticate,studentRoute,Controller.Action.getAllSentFriendRequest);
 // user.get("/all-friends",authenticate,studentRoute,Controller.Action.getAllFriends);
 // user.patch("/remove-friend",authenticate,studentRoute,Controller.Action.removeFriends);
