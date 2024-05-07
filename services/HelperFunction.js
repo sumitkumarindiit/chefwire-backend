@@ -2,6 +2,7 @@ import joi from "joi";
 import jwt from "jsonwebtoken";
 import Sib from "sib-api-v3-sdk";
 import twilio from "twilio";
+import moment from "moment";
 import Order from "../models/orderModel.js";
 import { Constants } from "./Constants.js";
 import { Logs } from "../middleware/log.js";
@@ -156,9 +157,9 @@ export const updateQuestUsers = async (
             Quest.findByIdAndUpdate(quest._id, {
               $addToSet: { excludedUsers: req.user._id },
             }),
-            Coupon.findByIdAndUpdate(quest.couponId,{
-              $pull:{eligibleUsers:{userId:req.user._id}}
-            })
+            Coupon.findByIdAndUpdate(quest.couponId, {
+              $pull: { eligibleUsers: { userId: req.user._id } },
+            }),
           ]);
         } else {
           return true;
@@ -293,4 +294,23 @@ export const validateCartItems = async (items) => {
 };
 const isExpired = (expireTime) => {
   return new Date(expireTime) < new Date();
+};
+export const getSlots = (startTime, endTime, interval) => {
+  const slots = [];
+  let currentTime = moment(startTime, "HH:mm");
+  const end = moment(endTime, "HH:mm");
+  while (currentTime.isBefore(end) || currentTime.isSame(end, "minute")) {
+    const nextTime = currentTime.clone().add(interval, "minutes");
+    const slotEndTime = nextTime.isAfter(end) ? end : nextTime;
+    const slot = {
+      startTime: currentTime.format("HH:mm"),
+      endTime: slotEndTime.format("HH:mm"),
+      isBooked: false,
+      isDisabled: false,
+      bookedDate: moment().format("YYYY-MM-DD"),
+    };
+    slots.push(slot);
+    currentTime = nextTime;
+  }
+  return slots;
 };

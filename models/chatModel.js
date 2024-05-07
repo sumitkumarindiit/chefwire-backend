@@ -16,7 +16,7 @@ const chatSchema = new Schema(
     },
     isGroupChat: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     notificationMuted: [
       {

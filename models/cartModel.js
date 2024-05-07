@@ -26,6 +26,7 @@ const cartSchema = new Schema(
             sizeId: {
               type: Schema.Types.ObjectId,
             },
+            size:{type:String},
             unitPrice: { type: Number },
             quantity: { type: Number },
           },

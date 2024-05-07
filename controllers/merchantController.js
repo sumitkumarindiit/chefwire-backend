@@ -15,6 +15,7 @@ import RestaurantMenu from "../models/restaurantMenuModel.js";
 import Post from "../models/postModel.js";
 import Qna from "../models/qaModel.js";
 import user from "../routes/userRoute.js";
+import DineIn from "../models/dineInModel.js";
 
 export const signupMerchant = async (req, res) => {
   try {
@@ -438,7 +439,7 @@ export const getQnq = async (req, res) => {
     if (restaurantId) {
       match = { restaurantId, ...(!type && { status: Constants.ACTIVE }) };
     }
-    console.log(match)
+    console.log(match);
     const faq = await Qna.find(match)
       .select("question answer")
       .sort({ order: 1 });
@@ -458,6 +459,35 @@ export const deleteQna = async (req, res, next) => {
     }
     Logs(req, Constants.DATA_DELETED, next);
     return Helper.successMsg(res, Constants.DATA_DELETED, {});
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
+export const createTableSlot = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.tableSlotSchema, req.body, res))
+      return;
+    const { type, startTime, endTime, interval, capacity } = req.body;
+    const slots = Helper.getSlots(startTime, endTime, interval);
+    console.log(slots)
+    const result = await DineIn.findOneAndUpdate(
+      {restaurantId:req.user._id},
+      {
+        restaurantId: req.user._id,
+        capacity,
+        ...(type === "BREAKFAST" && { breakFastSchedule: slots }),
+        ...(type === "LUNCH" && { lunchSchedule: slots }),
+        ...(type === "DINNER" && { dinnerSchedule: slots }),
+        status:Constants.ACTIVE
+      },
+      { upsert: true, new: true }
+    );
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_CREATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 200);
+    }
+    Logs(req, Constants.DATA_CREATED, next);
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
   } catch (err) {
     Helper.catchBlock(req, res, next, err);
   }

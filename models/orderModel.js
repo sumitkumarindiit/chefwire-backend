@@ -1,15 +1,14 @@
 import mongoose from "mongoose";
 import { Constants } from "../services/Constants.js";
 
-
 const Schema = mongoose.Schema;
 const orderSchema = new Schema(
   {
-    orderId:{
-      type:String,
-      required:true,
-      index:true,
-      unique:true,
+    orderId: {
+      type: String,
+      required: true,
+      index: true,
+      unique: true,
     },
     userId: {
       type: Schema.Types.ObjectId,
@@ -27,7 +26,7 @@ const orderSchema = new Schema(
       ref: "Address",
       default: null,
     },
-    couponId:{
+    couponId: {
       type: Schema.Types.ObjectId,
       ref: "Coupon",
       default: null,
@@ -37,20 +36,36 @@ const orderSchema = new Schema(
       enum: ["CATERER", "DINEIN", "FOOD"],
       default: "FOOD",
     },
-    paymentMethod:{
-      type:String,
+    paymentMethod: {
+      type: String,
     },
-    items: [{
-      type:Schema.Types.ObjectId,
-      ref:"RestaurantMenu"
-    }],
+    items: [
+      {
+        restaurantMenuId: {
+          type: Schema.Types.ObjectId,
+          ref: "RestaurantMenu",
+          index: true,
+          required: true,
+        },
+        price: [
+          {
+            sizeId: {
+              type: Schema.Types.ObjectId,
+            },
+            size:{type:String},
+            unitPrice: { type: Number },
+            quantity: { type: Number },
+          },
+        ],
+      },
+    ],
     eventName: {
       type: String,
       default: null,
     },
     eventType: {
       type: String,
-      lowercase:true,
+      lowercase: true,
       default: null,
     },
     eventDate: {
@@ -67,12 +82,12 @@ const orderSchema = new Schema(
     },
     description: {
       type: String,
-      default:null,
+      default: null,
     },
     status: {
       type: String,
-      enum: [Constants.ACTIVE, Constants.INACTIVE, "CANCELLED","COMPLETED"],
-      default: Constants.ACTIVE,
+      enum: ["CONFIRMED","DISPATCHED","OUTFORDELIVERY", "CANCELLED", "COMPLETED"],
+      default: "CONFIRMED",
     },
   },
   { timestamps: true }

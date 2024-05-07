@@ -256,9 +256,6 @@ export const unFollow = async (req, res, next) => {
 };
 export const getReviews = async (req, res, next) => {
   try {
-    // if (Helper.validateRequest(validateUser.userIdSchema, req.body, res))
-    //   return;
-    // const { userId } = req.body;
     const aggregate = [
       {
         $match: { userId: req.user._id },
@@ -266,7 +263,7 @@ export const getReviews = async (req, res, next) => {
       {
         $lookup: {
           from: "users",
-          localField: "reviewedId",
+          localField: "restaurantId",
           foreignField: "_id",
           as: "reviewed",
           pipeline: [
@@ -358,6 +355,24 @@ export const makePayment = async (req, res) => {
     return Helper.successMsg(res, "Payment made successfully", {
       id: session.id,
     });
+  } catch (err) {
+    Helper.catchBlock(req, res, null, err);
+  }
+};
+export const addNewCard = async (req, res) => {
+  try {
+    const { cardToken } = req.body;
+    const customer = await stripe.customers.retrieve(req.user._id);
+
+    // Attach the card to the customer
+    await stripe.customers.createSource(req.user._id, {
+      source: cardToken,
+    });
+    const updatedCustomer = await stripe.customers.retrieve(req.user._id);
+    const savedCards = updatedCustomer.sources.data.filter(
+      (source) => source.object === "card"
+    );
+    return Helper.successMsg(res, "Card added successfully", savedCards);
   } catch (err) {
     Helper.catchBlock(req, res, null, err);
   }

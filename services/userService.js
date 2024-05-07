@@ -269,7 +269,7 @@ export const merchantCommonAggregation = (profile) => {
       $lookup: {
         from: "reviews",
         localField: "_id",
-        foreignField: "reviewedId",
+        foreignField: "restaurantId",
         as: "reviews",
         pipeline: [
           {

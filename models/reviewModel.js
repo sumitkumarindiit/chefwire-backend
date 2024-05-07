@@ -9,16 +9,16 @@ const reviewSchema = new Schema({
     index: true,
     required: true,
   },
-  reviewedId: {
+  restaurantId: {
     type: Schema.Types.ObjectId,
-    ref:"User",
+    ref: "User",
+    index: true,
+    required: true,
+  },
+  orderId: {
+    type: String,
     required: true,
     index: true,
-  },
-  reviewType: {
-    type: String,
-    enum: ["RESTAURANT", "CATERER"],
-    default: "RESTAURANT",
   },
   rating: { type: Number, min: 1, max: 5, required: true },
   reviewText: { type: String, default: null },

@@ -14,5 +14,6 @@ merchant.put("/update-q&a",authenticate,merchantRoute,Controller.Merchant.update
 merchant.patch("/update-q&a-order",authenticate,merchantRoute,Controller.Merchant.updateQnaOrder);
 merchant.get("/get-q&a",authenticate,Controller.Merchant.getQnq);
 merchant.delete("/delete-q&a",authenticate,merchantRoute,Controller.Merchant.deleteQna);
+merchant.post("/create-table-slot",authenticate,merchantRoute,Controller.Merchant.createTableSlot);
 
 export default merchant;

@@ -111,13 +111,40 @@ export const makeOrderSchema = joi.object({
   couponId: joi.string().hex().length(24),
   orderType: joi.string().valid("CATERER", "DINEIN", "FOOD"),
   paymentMethod: joi.string(),
-  items: joi.array().items(joi.string().hex().length(24)),
+  items: joi.when("orderType", {
+    is: "CATERER",
+    then: joi.array().items(joi.string().hex().length(24)),
+    otherwise: joi
+      .array()
+      .items(
+        joi.object({
+          restaurantMenuId: joi.string().hex().length(24).required(),
+          price: joi.array().items(
+            joi.object({
+              sizeId: joi.string().hex().length(24).required(),
+              size: joi.string().required(),
+              unitPrice: joi.number().required(),
+              quantity: joi.number().required(),
+            })
+          ),
+        })
+      )
+      .required(),
+  }),
   eventName: joi.string(),
   eventType: joi.string(),
   eventDate: joi.date(),
   eventTime: joi.string(),
   NoOfGuest: joi.number(),
   description: joi.string(),
+});
+export const getOrderSchema = joi.object({
+  orderId: joi.string().hex().length(24),
+  type: joi.when("orderId", {
+    is: joi.exist(),
+    then: joi.forbidden(),
+    otherwise: joi.string().valid("UPCOMING", "PAST").required(),
+  }),
 });
 export const addCartSchema = joi.object({
   items: joi
@@ -128,6 +155,7 @@ export const addCartSchema = joi.object({
         price: joi.array().items(
           joi.object({
             sizeId: joi.string().hex().length(24).required(),
+            size: joi.string().required(),
             unitPrice: joi.number().required(),
             quantity: joi.number().required(),
           })
@@ -156,4 +184,17 @@ export const getQnaSchema = joi.object({
   qnaId: joi.string().hex().length(24),
   restaurantId: joi.string().hex().length(24),
   type: joi.string(),
+});
+export const feedBackSchema = joi.object({
+  restaurantId: joi.string().hex().length(24).required(),
+  orderId: joi.string().required(),
+  rating: joi.number().required(),
+  reviewText: joi.string(),
+});
+export const tableSlotSchema = joi.object({
+  type: joi.string().valid("BREAKFAST","LUNCH","DINNER").required(),
+  startTime: joi.string().required().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  endTime: joi.string().required().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  interval: joi.number().required(),
+  capacity:joi.number().required()
 });
