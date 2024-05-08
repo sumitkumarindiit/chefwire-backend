@@ -7,7 +7,6 @@ import { Logs } from "../middleware/log.js";
 import { Notifications } from "../middleware/notification.js";
 import { Constants, SocketEvent } from "../services/Constants.js";
 import mongoose from "mongoose";
-import { imageModeration, textModeration } from "../services/userService.js";
 import User from "../models/userModel.js";
 
 const commentCommonAggregation = () => {

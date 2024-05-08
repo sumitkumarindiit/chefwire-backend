@@ -6,9 +6,15 @@ const userSchema = new Schema(
   {
     role: {
       type: Schema.Types.ObjectId,
-      default: null,
+      required: true,
       index: true,
       ref: "Role",
+    },
+    plan:{
+      type: Schema.Types.ObjectId,
+      default: null,
+      index: true,
+      ref: "Plan",
     },
     name: {
       type: String,
@@ -120,6 +126,11 @@ const userSchema = new Schema(
       },
     ],
     savedPosts: [{ type: Schema.Types.ObjectId, ref: "Post", index: true }],
+    unreadMessages: [],
+    unreadNotification:{
+      type:Number,
+      default:0
+    },
     status: {
       type: String,
       enum: [Constants.ACTIVE, Constants.INACTIVE],

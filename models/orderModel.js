@@ -21,6 +21,10 @@ const orderSchema = new Schema(
       ref: "User",
       default: null,
     },
+    slotId:{
+      type: Schema.Types.ObjectId,
+      default: null,
+    },
     addressId: {
       type: Schema.Types.ObjectId,
       ref: "Address",
@@ -38,6 +42,7 @@ const orderSchema = new Schema(
     },
     paymentMethod: {
       type: String,
+      default:""
     },
     items: [
       {
@@ -59,6 +64,9 @@ const orderSchema = new Schema(
         ],
       },
     ],
+    totalPrice:{
+      type:Number
+    },
     eventName: {
       type: String,
       default: null,

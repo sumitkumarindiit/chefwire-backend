@@ -10,7 +10,7 @@ import { validateCoupon, userCommonAggregation } from "../services/userService.j
 import mongoose from "mongoose";
 import Address from "../models/addressModel.js";
 import Review from "../models/reviewModel.js";
-import Coupon from "../models/couponModel.js";
+
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);

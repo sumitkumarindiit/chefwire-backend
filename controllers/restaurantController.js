@@ -1,15 +1,10 @@
-//Catering Section
-import User from "../models/userModel.js";
-import bcrypt from "bcrypt";
+import moment from "moment";
 import { Logs } from "../middleware/log.js";
 import * as Helper from "../services/HelperFunction.js";
 import * as validatePost from "../services/SchemaValidate/homeSchema.js";
-import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants, SocketEvent } from "../services/Constants.js";
-import Role from "../models/roleAndPermissionModel.js";
-import uploadToS3 from "../services/s3Services.js";
-import Address from "../models/addressModel.js";
 import {
+  bookTable,
   merchantCommonAggregation,
   validateCoupon,
 } from "../services/userService.js";
@@ -17,7 +12,6 @@ import mongoose from "mongoose";
 import Category from "../models/categoryModel.js";
 import RestaurantMenu from "../models/restaurantMenuModel.js";
 import Order from "../models/orderModel.js";
-import user from "../routes/userRoute.js";
 import { Notifications } from "../middleware/notification.js";
 import Cart from "../models/cartModel.js";
 import Coupon from "../models/couponModel.js";
@@ -80,7 +74,7 @@ export const makeOrder = async (req, res) => {
   try {
     if (Helper.validateRequest(validatePost.makeOrderSchema, req.body, res))
       return;
-    const { couponId, ...objToSave } = req.body;
+    const { couponId, orderType, tableType, ...objToSave } = req.body;
     const orderId = Helper.generateOrderId();
     const isOrderID = await Order.findOne({ orderId });
     if (isOrderID) {
@@ -100,9 +94,36 @@ export const makeOrder = async (req, res) => {
         return Helper.errorMsg(res, check.message, 200);
       }
     }
+    if(orderType === "FOOD"){
+      const checkPrice = await Helper.validateCartItems(objToSave.items);
+      if (!checkPrice.status) {
+        return Helper.errorMsg(res, checkPrice.message, 200);
+      }else{
+        console.log(checkPrice.totalPrice)
+        return;
+      }
+    }
+    if (orderType === "DINEIN") {
+      if (!req.body.eventDate) {
+        return res.status(200).json({ message: "eventDate required" });
+      }
+      const dine = await bookTable(
+        req.body.eventDate,
+        req.body.restaurantId,
+        tableType,
+        req.body.slotId
+      );
+      if (!dine) {
+        return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+      }
+      if (!dine.status) {
+        return Helper.errorMsg(res, dine.message, 200);
+      }
+    }
     const result = await Order.create({
       userId: req.user._id,
       orderId,
+      orderType,
       ...(couponId && { couponId }),
       ...objToSave,
     });
@@ -447,8 +468,8 @@ export const addToCart = async (req, res) => {
     const { items } = req.body;
 
     const checkPrice = await Helper.validateCartItems(items);
-    if (checkPrice.length > 0) {
-      return Helper.errorMsg(res, checkPrice, 200);
+    if (!checkPrice.status) {
+      return Helper.errorMsg(res, checkPrice.message, 200);
     }
     const existingCart = await Cart.findOne({ userId: req.user._id }).populate(
       "items.restaurantMenuId"
@@ -706,9 +727,10 @@ export const giveFeedback = async (req, res) => {
   }
 };
 export const getTableSlots = async (req, res) => {
-  if (Helper.validateRequest(validatePost.idSchema, req.query, res)) return;
+  if (Helper.validateRequest(validatePost.getSlotchema, req.query, res)) return;
   try {
-    const restaurantId = req.query.id;
+    const { restaurantId, date } = req.query;
+    const formatedDate = moment(date).format("YYYY-MM-DD")
     const aggregate = [
       {
         $match: {
@@ -724,10 +746,32 @@ export const getTableSlots = async (req, res) => {
               input: "$breakFastSchedule",
               as: "item",
               cond: {
-                $and: [
-                  { $eq: ["$$item.isBooked", false] },
-                  { $eq: ["$$item.isDisabled", false] },
-                ],
+                $or: [
+                  {
+                    $and: [
+                      { $ne: ["$$item.bookedDate", null] },
+                      {
+                        $eq: [
+                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
+                          formatedDate
+                        ]
+                      },
+                      { $lt: ["$$item.booked", "$tableCount"] }, // Check if booked is less than tableCount
+                      { $eq: ["$$item.isDisabled", false] } // Ensure the item is not disabled
+                    ]
+                  },
+                  {
+                    $or: [
+                      { $eq: ["$$item.bookedDate", null] }, // Include records with null bookedDate
+                      {
+                        $ne: [
+                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
+                          formatedDate // Include records with different bookedDate
+                        ]
+                      }
+                    ]
+                  }
+                ]
               },
             },
           },
@@ -736,22 +780,66 @@ export const getTableSlots = async (req, res) => {
               input: "$lunchSchedule",
               as: "item",
               cond: {
-                $and: [
-                  { $eq: ["$$item.isBooked", false] },
-                  { $eq: ["$$item.isDisabled", false] },
-                ],
-              },
-            },
-          },
+                $or: [
+                  {
+                    $and: [
+                      { $ne: ["$$item.bookedDate", null] },
+                      {
+                        $eq: [
+                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
+                          formatedDate
+                        ]
+                      },
+                      { $lt: ["$$item.booked", "$tableCount"] }, // Check if booked is less than tableCount
+                      { $eq: ["$$item.isDisabled", false] } // Ensure the item is not disabled
+                    ]
+                  },
+                  {
+                    $or: [
+                      { $eq: ["$$item.bookedDate", null] }, // Include records with null bookedDate
+                      {
+                        $ne: [
+                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
+                          formatedDate // Include records with different bookedDate
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },          
           dinnerSchedule: {
             $filter: {
               input: "$dinnerSchedule",
               as: "item",
               cond: {
-                $and: [
-                  { $eq: ["$$item.isBooked", false] },
-                  { $eq: ["$$item.isDisabled", false] },
-                ],
+                $or: [
+                  {
+                    $and: [
+                      { $ne: ["$$item.bookedDate", null] },
+                      {
+                        $eq: [
+                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
+                          formatedDate
+                        ]
+                      },
+                      { $lt: ["$$item.booked", "$tableCount"] }, // Check if booked is less than tableCount
+                      { $eq: ["$$item.isDisabled", false] } // Ensure the item is not disabled
+                    ]
+                  },
+                  {
+                    $or: [
+                      { $eq: ["$$item.bookedDate", null] }, // Include records with null bookedDate
+                      {
+                        $ne: [
+                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
+                          formatedDate // Include records with different bookedDate
+                        ]
+                      }
+                    ]
+                  }
+                ]
               },
             },
           },

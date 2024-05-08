@@ -8,13 +8,9 @@ import { Constants } from "../services/Constants.js";
 import Role from "../models/roleAndPermissionModel.js";
 import uploadToS3 from "../services/s3Services.js";
 import Address from "../models/addressModel.js";
-import { merchantCommonAggregation } from "../services/userService.js";
-import mongoose from "mongoose";
 import Category from "../models/categoryModel.js";
 import RestaurantMenu from "../models/restaurantMenuModel.js";
-import Post from "../models/postModel.js";
 import Qna from "../models/qaModel.js";
-import user from "../routes/userRoute.js";
 import DineIn from "../models/dineInModel.js";
 
 export const signupMerchant = async (req, res) => {
@@ -463,24 +459,38 @@ export const deleteQna = async (req, res, next) => {
     Helper.catchBlock(req, res, next, err);
   }
 };
+export const updateTableCapacity = async (req, res, next) => {
+  try {
+    if (Helper.validateRequest(validatePost.tableSchema, req.body, res)) return;
+    const result = await DineIn.findOneAndUpdate(
+      { restaurantId: req.user._id },
+      req.body,
+      { upsert: true, new: true }
+    );
+    if (!result) {
+      Logs(req, Constants.DATA_NOT_CREATED, next);
+      return Helper.errorMsg(res, Constants.DATA_NOT_CREATED, 200);
+    }
+    Logs(req, Constants.DATA_CREATED, next);
+    return Helper.successMsg(res, Constants.DATA_CREATED, result);
+  } catch (err) {
+    Helper.catchBlock(req, res, next, err);
+  }
+};
 export const createTableSlot = async (req, res, next) => {
   try {
     if (Helper.validateRequest(validatePost.tableSlotSchema, req.body, res))
       return;
     const { type, startTime, endTime, interval, capacity } = req.body;
     const slots = Helper.getSlots(startTime, endTime, interval);
-    console.log(slots)
     const result = await DineIn.findOneAndUpdate(
-      {restaurantId:req.user._id},
+      { restaurantId: req.user._id,status:Constants.ACTIVE },
       {
-        restaurantId: req.user._id,
-        capacity,
         ...(type === "BREAKFAST" && { breakFastSchedule: slots }),
         ...(type === "LUNCH" && { lunchSchedule: slots }),
         ...(type === "DINNER" && { dinnerSchedule: slots }),
-        status:Constants.ACTIVE
       },
-      { upsert: true, new: true }
+      { new: true }
     );
     if (!result) {
       Logs(req, Constants.DATA_NOT_CREATED, next);

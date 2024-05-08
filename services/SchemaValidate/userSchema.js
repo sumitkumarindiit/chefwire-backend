@@ -137,15 +137,27 @@ export const userSearchQuery = joi.object({
   name: joi.string().allow(""),
   group_id: joi.string().hex().length(24),
 });
-export const groupIdSchema = joi.object({
-  group_id: joi.string().hex().length(24).required(),
+export const chatIdSchema = joi.object({
+  chatId: joi.string().hex().length(24).required(),
+});
+export const updateUnreadMsgSchema = joi.object({
+  chatId: joi.string().hex().length(24).required(),
+  reset: joi.boolean().strict(true).required(),
+});
+export const updateUnreadNotiSchema = joi.object({
+  minus: joi.boolean().strict(true),
+  reset: joi.boolean().strict(true),
+});
+export const getMessagesSchema = joi.object({
+  chatId: joi.string().hex().length(24).required(),
+  page: joi.string(),
 });
 export const groupRequestSchema = joi.object({
   group_id: joi.string().hex().length(24).required(),
   notification_id: joi.string().hex().length(24).required(),
 });
 export const deleteChatSchema = joi.object({
-  group_id: joi.string().hex().length(24).required(),
+  chatId: joi.string().hex().length(24).required(),
   type: joi.string().valid("DELETE", "EXIT").required(),
 });
 export const groupSchema = joi.object({
@@ -163,13 +175,13 @@ export const updateGroupSchema = joi.object({
   user_id: joi.array().items(joi.string().regex(/^[0-9a-fA-F]{24}$/)),
 });
 export const chatSchema = joi.object({
-  group_id: joi.string().hex().length(24).required(),
-  message_text: joi.when("message_file", {
+  chatId: joi.string().hex().length(24).required(),
+  messageText: joi.when("messageFile", {
     is: joi.exist(),
     then: joi.optional(),
     otherwise: joi.string().min(1).required(),
   }),
-  message_file: joi.binary(),
+  messageFile: joi.binary(),
 });
 export const updateUserSchema = joi.object({
   name: joi.string(),

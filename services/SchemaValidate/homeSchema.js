@@ -107,29 +107,42 @@ export const getMenuSchema = joi.object({
 });
 export const makeOrderSchema = joi.object({
   restaurantId: joi.string().hex().length(24).required(),
-  addressId: joi.string().hex().length(24).required(),
+  addressId: joi.when("orderType",{
+    is:"DINEIN",
+    then:joi.forbidden(),
+    otherwise:joi.string().hex().length(24).required()
+  }),
+  slotId: joi.when("orderType",{
+    is:"DINEIN",
+    then:joi.string().hex().length(24).required(),
+    otherwise:joi.forbidden()
+  }),
   couponId: joi.string().hex().length(24),
   orderType: joi.string().valid("CATERER", "DINEIN", "FOOD"),
   paymentMethod: joi.string(),
   items: joi.when("orderType", {
     is: "CATERER",
-    then: joi.array().items(joi.string().hex().length(24)),
-    otherwise: joi
-      .array()
-      .items(
-        joi.object({
-          restaurantMenuId: joi.string().hex().length(24).required(),
-          price: joi.array().items(
-            joi.object({
-              sizeId: joi.string().hex().length(24).required(),
-              size: joi.string().required(),
-              unitPrice: joi.number().required(),
-              quantity: joi.number().required(),
-            })
-          ),
-        })
-      )
-      .required(),
+    then: joi.array().items(joi.string().hex().length(24)).required(),
+    otherwise: joi.when("orderType", {
+      is: "DINEIN",
+      then: joi.forbidden(),
+      otherwise: joi
+        .array()
+        .items(
+          joi.object({
+            restaurantMenuId: joi.string().hex().length(24).required(),
+            price: joi.array().items(
+              joi.object({
+                sizeId: joi.string().hex().length(24).required(),
+                size: joi.string().required(),
+                unitPrice: joi.number().required(),
+                quantity: joi.number().required(),
+              })
+            ),
+          })
+        )
+        .required(),
+    }),
   }),
   eventName: joi.string(),
   eventType: joi.string(),
@@ -137,6 +150,11 @@ export const makeOrderSchema = joi.object({
   eventTime: joi.string(),
   NoOfGuest: joi.number(),
   description: joi.string(),
+  tableType:joi.when("orderType",{
+    is:"DINEIN",
+    then:joi.string().valid("BREAKFAST","LUNCH","DINNER").required(),
+    otherwise:joi.forbidden()
+  })
 });
 export const getOrderSchema = joi.object({
   orderId: joi.string().hex().length(24),
@@ -191,10 +209,22 @@ export const feedBackSchema = joi.object({
   rating: joi.number().required(),
   reviewText: joi.string(),
 });
+export const tableSchema = joi.object({
+  tableCount: joi.number().required(),
+  seatingCapacity: joi.number().required(),
+});
 export const tableSlotSchema = joi.object({
   type: joi.string().valid("BREAKFAST","LUNCH","DINNER").required(),
   startTime: joi.string().required().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
   endTime: joi.string().required().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
   interval: joi.number().required(),
-  capacity:joi.number().required()
+});
+export const getSlotchema = joi.object({
+  restaurantId: joi.string().hex().length(24).required(),
+  date: joi.date().required(),
+});
+export const bookSlotchema = joi.object({
+  restaurantId: joi.string().hex().length(24).required(),
+  slotId: joi.string().hex().length(24).required(),
+  
 });

@@ -6,7 +6,6 @@ import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants } from "../services/Constants.js";
 import { userCommonAggregation } from "../services/userService.js";
 import Role from "../models/roleAndPermissionModel.js";
-import uploadToS3 from "../services/s3Services.js";
 
 export const signup = async (req, res) => {
   try {

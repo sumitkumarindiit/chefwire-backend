@@ -1,13 +1,10 @@
-import uploadToS3 from "../services/s3Services.js";
 import * as Helper from "../services/HelperFunction.js";
 import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import * as validatePost from "../services/SchemaValidate/homeSchema.js";
-import { Logs } from "../middleware/log.js";
 import { Constants } from "../services/Constants.js";
 import Category from "../models/categoryModel.js";
 import Service from "../models/serviceModel.js";
 import Offer from "../models/offerModel.js";
-import Coupon from "../models/couponModel.js";
 import Quest from "../models/questModel.js";
 import mongoose from "mongoose";
 import { merchantCommonAggregation } from "../services/userService.js";

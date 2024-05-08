@@ -9,11 +9,14 @@ export const SocketEvent = {
   COMMENT_POST_EVENT: "commentPost",
   SHARE_POST_EVENT: "sharePost",
   GROUP_MEMBER_ADDED:"groupMemberAdded",
+  MENTIONED_YOU_IN_CHAT:"chatMention",
   ONLINE_USERS:"onlineUsers"
 };
 export const Constants = {
+  CHAT_MENTION:"CHATMENTION",
   POST:"POST",
   DB_NAME:"chefwire",
+  NEW_CHAT_CREATED:"NEWCHAT",
   ACTIVE:"ACTIVE",
   INACTIVE:"INACTIVE",
   OTP_TYPE_SIGNUP:"SIGNUP",

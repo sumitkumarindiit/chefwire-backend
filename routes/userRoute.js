@@ -18,6 +18,16 @@ user.get("/check-coupon",authenticate,Controller.User.checkCoupon);
 user.post("/make-payment",Controller.User.makePayment);
 user.get("/get-user-profile", authenticate, Controller.User.getUserProfile);
 user.put("/update-user", authenticate, Controller.User.updateUser);
+user.post("/create-chat",authenticate,Controller.Chat.createOrGetAOneOnOneChat);
+user.patch("/delete-chat",authenticate,Controller.Chat.deleteChat);
+user.get("/chats",authenticate,Controller.Chat.getAllChats);
+user.post("/message",authenticate,Controller.Chat.sendMessage);
+user.get("/message",authenticate,Controller.Chat.getMessages);
+user.get("/get-media-or-links",authenticate,Controller.Chat.getMediaAndLinksOFGroup);
+user.get("/unread-message",authenticate,Controller.Chat.getUnreadMessages);
+user.patch("/unread-message",authenticate,Controller.Chat.updateUnreadMessages);
+user.get("/unread-notification",authenticate,Controller.Chat.getUnreadNotification);
+user.patch("/unread-notification",authenticate,Controller.Chat.updateUnreadNotification);
 
 export default user;
 

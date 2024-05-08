@@ -13,9 +13,9 @@ const subSchedule = {
     uppercase: true,
     trim: true,
   },
-  isBooked: {
-    type: Boolean,
-    default: false,
+  booked: {
+    type: Number,
+    default: 0,
   },
   isDisabled: {
     type: Boolean,
@@ -34,10 +34,12 @@ const dineInSchema = new Schema(
       index: true,
       required: true,
     },
+    date:{type:Date},
     breakFastSchedule: [subSchedule],
     lunchSchedule: [subSchedule],
     dinnerSchedule: [subSchedule],
-    capacity: { type: Number, default: true },
+    tableCount:{type:Number,default:0},
+    seatingCapacity: { type: Number, default: 1 },
     status: {
       type: String,
       enum: [Constants.ACTIVE, Constants.INACTIVE],

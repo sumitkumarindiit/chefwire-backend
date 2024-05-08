@@ -3,6 +3,7 @@ import FormData from "form-data";
 import * as Helper from "./HelperFunction.js";
 import Coupon from "../models/couponModel.js";
 import { Constants } from "./Constants.js";
+import DineIn from "../models/dineInModel.js";
 export const findMutualFriends = async (my_id, user_id) => {
   try {
     const [user, other_user] = await Promise.all([
@@ -232,8 +233,30 @@ export const merchantCommonAggregation = (profile) => {
       },
     },
     {
+      $lookup: {
+        from: "plans",
+        localField: "plan",
+        foreignField: "_id",
+        as: "plan",
+        pipeline: [
+          {
+            $project: {
+              __v: 0,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$plan",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
       $addFields: {
         role: "$role.role",
+        plan:"$plan.name"
       },
     },
     {
@@ -350,8 +373,8 @@ export const merchantCommonAggregation = (profile) => {
   ];
 };
 
-export const validateCoupon =async(req,couponId)=>{
-  try{
+export const validateCoupon = async (req, couponId) => {
+  try {
     const coupon = await Coupon.findOne({
       _id: couponId,
       status: Constants.ACTIVE,
@@ -361,9 +384,9 @@ export const validateCoupon =async(req,couponId)=>{
       .lean();
     if (!coupon) {
       return {
-        status:false,
-        message:"This coupon is expired"
-      }
+        status: false,
+        message: "This coupon is expired",
+      };
     }
     if (coupon.isGlobal) {
       if (
@@ -372,9 +395,9 @@ export const validateCoupon =async(req,couponId)=>{
           .includes(req.user._id.toString())
       ) {
         return {
-          status:false,
-          message:"You already used this coupon"
-        }
+          status: false,
+          message: "You already used this coupon",
+        };
       }
     }
     if (!coupon.isGlobal) {
@@ -384,17 +407,71 @@ export const validateCoupon =async(req,couponId)=>{
           .includes(req.user._id.toString())
       ) {
         return {
-          status:false,
-          message:"You are not eligible for this coupon"
-        }
+          status: false,
+          message: "You are not eligible for this coupon",
+        };
       }
     }
     return {
-      status:true,
-      message:"Coupon verified successfully",
-      data:coupon
-    }
-  }catch(err){
-    return null
+      status: true,
+      message: "Coupon verified successfully",
+      data: coupon,
+    };
+  } catch (err) {
+    return null;
   }
-}
+};
+export const bookTable = async (date, restaurantId, type, slotId) => {
+  try {
+    let updateField;
+    switch (type) {
+      case "BREAKFAST":
+        updateField = "breakFastSchedule";
+        break;
+      case "LUNCH":
+        updateField = "lunchSchedule";
+        break;
+      case "DINNER":
+        updateField = "dinnerSchedule";
+        break;
+      default:
+        return {
+          status: false,
+          message: "Invalid table type",
+        };
+    }
+    const dineIn = await DineIn.findOne({ restaurantId });
+    if (!dineIn) {
+      return {
+        status: false,
+        message: "Table not found for this restaurant",
+      };
+    }
+    const schedule = dineIn[updateField];
+    const slotIndex = schedule.findIndex(
+      (slot) => slot._id.toString() === slotId
+    );
+    if (slotIndex === -1) {
+      return {
+        status: false,
+        message: "Slot not found",
+      };
+    }
+    const slot = schedule[slotIndex];
+    if (slot.booked >= dineIn.capacity) {
+      return {
+        status: false,
+        message: "Slot fully booked",
+      };
+    }
+    slot.booked += 1;
+    slot.bookedDate = new Date(date);
+    await dineIn.save();
+    return {
+      status: true,
+      message: "Table booked successfully",
+    };
+  } catch (err) {
+    return null;
+  }
+};

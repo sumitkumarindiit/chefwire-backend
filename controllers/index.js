@@ -6,4 +6,5 @@ export * as Post from "./postController.js";
 export * as Privacy from "./privacyController.js";
 export * as Admin from "./adminController.js"
 export * as Merchant from "./merchantController.js"
+export * as Chat from "./chatController.js"
 

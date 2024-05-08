@@ -16,11 +16,20 @@ const messageSchema = new Schema(
       type: String,
       trim: true,
     },
+    mentions: [
+      {
+        userId: { type: Schema.Types.ObjectId, ref: 'User',index:true },  
+        position: {
+          type:Number
+        }
+      }
+    ],
     readStatus:{
       type:Boolean,
       default:false
     },
     media:[],
+    links:[],
     status: {
       type: String,
       enum: [Constants.ACTIVE, Constants.INACTIVE],

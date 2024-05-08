@@ -10,9 +10,10 @@ import Offer from "./models/offerModel.js";
 import Quest from "./models/questModel.js";
 
 // Schedule tasks
-const futureTime = moment().add(1, "minutes").format("mm HH DD MM *");
+const futureTime = moment().add(0.1, "minutes").format("mm HH DD MM *");
 cron.schedule("1 0 * * *", async () => {
   try {
+    console.log(123)
     const thirtyDaysAgo = moment().subtract(30, "days").toDate();
     await Promise.all([
       Log.deleteMany({ createdAt: { $lt: thirtyDaysAgo } }),

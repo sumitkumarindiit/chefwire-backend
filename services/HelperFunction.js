@@ -245,7 +245,7 @@ export const catchBlock = (req, res, next, err) => {
 };
 export const validateCartItems = async (items) => {
   try {
-    const validationErrors = [];
+    let totalPrice = 0;
 
     // Iterate over each item in the cart
     for (const item of items) {
@@ -259,10 +259,10 @@ export const validateCartItems = async (items) => {
         !restaurantMenu.price ||
         restaurantMenu.price.length === 0
       ) {
-        validationErrors.push(
-          `Menu item with ID ${item.restaurantMenuId} does not exist or has no price details.`
-        );
-        continue;
+        return {
+          status:false,
+          message:`Menu item with ID ${item.restaurantMenuId} does not exist or has no price details.`
+        }
       }
 
       // Iterate over each price detail in the restaurantMenu
@@ -273,21 +273,27 @@ export const validateCartItems = async (items) => {
 
         // If sizeId from cart item doesn't match any sizeId in restaurantMenu, skip validation
         if (!matchedPriceDetail) {
-          validationErrors.push(
-            `Size ID ${priceDetail._id} not found for menu item with ID ${item.restaurantMenuId}.`
-          );
-          continue;
+          return {
+            status:false,
+            message:`Size ID ${priceDetail._id} not found for menu item with ID ${item.restaurantMenuId}.`
+          }
         }
         // Check if unitPrice matches the price stored in restaurantMenu
         if (matchedPriceDetail.price !== priceDetail.unitPrice) {
-          validationErrors.push(
-            `Unit price mismatch for size ID ${priceDetail.sizeId} of menu item.`
-          );
+          return {
+            status:false,
+            message:`Unit price mismatch for size ID ${priceDetail.sizeId} of menu item.`
+          }
         }
+        totalPrice += priceDetail.unitPrice * priceDetail.quantity
+        console.log(priceDetail)
       }
     }
 
-    return validationErrors;
+    return {
+      status:true,
+      totalPrice
+    };
   } catch (error) {
     throw new Error(`Error validating cart items: ${error.message}`);
   }
@@ -305,12 +311,20 @@ export const getSlots = (startTime, endTime, interval) => {
     const slot = {
       startTime: currentTime.format("HH:mm"),
       endTime: slotEndTime.format("HH:mm"),
-      isBooked: false,
+      booked: 0,
       isDisabled: false,
-      bookedDate: moment().format("YYYY-MM-DD"),
+      bookedDate: null,
     };
     slots.push(slot);
     currentTime = nextTime;
   }
   return slots;
+};
+export const capitalizeEveryWord = (sentence) => {
+  const words = sentence?.split(" ");
+  const capitalizedWords = words?.map((word) => {
+    return word?.charAt(0)?.toUpperCase() + word?.slice(1);
+  });
+  const capitalizedSentence = capitalizedWords?.join(" ");
+  return capitalizedSentence;
 };

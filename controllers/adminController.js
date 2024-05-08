@@ -1,16 +1,8 @@
-import User from "../models/userModel.js";
-import Otp from "../models/otpModel.js";
-import bcrypt from "bcrypt";
 import { Logs } from "../middleware/log.js";
 import * as Helper from "../services/HelperFunction.js";
 import * as validatePost from "../services/SchemaValidate/homeSchema.js";
-import * as validateUser from "../services/SchemaValidate/userSchema.js";
 import { Constants } from "../services/Constants.js";
-import Role from "../models/roleAndPermissionModel.js";
 import uploadToS3 from "../services/s3Services.js";
-import Address from "../models/addressModel.js";
-import { merchantCommonAggregation } from "../services/userService.js";
-import mongoose from "mongoose";
 import Coupon from "../models/couponModel.js";
 import Quest from "../models/questModel.js";
 
