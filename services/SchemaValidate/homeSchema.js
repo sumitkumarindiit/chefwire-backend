@@ -144,6 +144,11 @@ export const makeOrderSchema = joi.object({
         .required(),
     }),
   }),
+  totalPrice:joi.when("orderType",{
+    is:"FOOD",
+    then:joi.number().required(),
+    otherwise:joi.forbidden()
+  }),
   eventName: joi.string(),
   eventType: joi.string(),
   eventDate: joi.date(),

@@ -256,7 +256,7 @@ export const merchantCommonAggregation = (profile) => {
     {
       $addFields: {
         role: "$role.role",
-        plan:"$plan.name"
+        plan: "$plan.name",
       },
     },
     {
@@ -401,15 +401,23 @@ export const validateCoupon = async (req, couponId) => {
       }
     }
     if (!coupon.isGlobal) {
+      const users = coupon.eligibleUsers.find((id) =>
+        id.userId.toString() === req.user._id.toString()
+      );
       if (
-        !coupon.eligibleUsers
-          .map((id) => id.toString())
-          .includes(req.user._id.toString())
+        !users
       ) {
         return {
           status: false,
           message: "You are not eligible for this coupon",
         };
+      } else {
+        if(Helper.isExpired(users.expireTime)){
+          return {
+            status: false,
+            message: "This coupon has been expired",
+          };
+        }
       }
     }
     return {

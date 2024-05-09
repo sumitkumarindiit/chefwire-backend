@@ -70,7 +70,7 @@ export const getRestaurantMenu = async (req, res) => {
     return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
   }
 };
-export const makeOrder = async (req, res) => {
+export const makeOrder = async (req, res,next) => {
   try {
     if (Helper.validateRequest(validatePost.makeOrderSchema, req.body, res))
       return;
@@ -94,13 +94,27 @@ export const makeOrder = async (req, res) => {
         return Helper.errorMsg(res, check.message, 200);
       }
     }
-    if(orderType === "FOOD"){
+    if (orderType === "FOOD") {
       const checkPrice = await Helper.validateCartItems(objToSave.items);
       if (!checkPrice.status) {
         return Helper.errorMsg(res, checkPrice.message, 200);
-      }else{
-        console.log(checkPrice.totalPrice)
-        return;
+      } else {
+        let updatedPrice;
+        if (coupon.discountType === "FLAT") {
+          updatedPrice = checkPrice.totalPrice - coupon.discount;
+        } else {
+          updatedPrice =
+            checkPrice.totalPrice -
+            (checkPrice.totalPrice * coupon.discount) / 100;
+        }
+        console.log(updatedPrice,objToSave.totalPrice)
+        if (updatedPrice !== objToSave.totalPrice) {
+          return Helper.errorMsg(
+            res,
+            "Your cart items price has been changed please review and order again",
+            200
+          );
+        }
       }
     }
     if (orderType === "DINEIN") {
@@ -162,10 +176,10 @@ export const makeOrder = async (req, res) => {
       null,
       payload
     );
+    Logs(req,"Order Placed", next);
     return Helper.successMsg(res, Constants.DATA_CREATED, result);
   } catch (err) {
-    console.log("Errors", err);
-    return Helper.errorMsg(res, Constants.SOMETHING_WRONG, 500);
+    return Helper.catchBlock(req,res,next, err);
   }
 };
 export const getOrder = async (req, res) => {
@@ -730,7 +744,7 @@ export const getTableSlots = async (req, res) => {
   if (Helper.validateRequest(validatePost.getSlotchema, req.query, res)) return;
   try {
     const { restaurantId, date } = req.query;
-    const formatedDate = moment(date).format("YYYY-MM-DD")
+    const formatedDate = moment(date).format("YYYY-MM-DD");
     const aggregate = [
       {
         $match: {
@@ -752,26 +766,36 @@ export const getTableSlots = async (req, res) => {
                       { $ne: ["$$item.bookedDate", null] },
                       {
                         $eq: [
-                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
-                          formatedDate
-                        ]
+                          {
+                            $dateToString: {
+                              format: "%Y-%m-%d",
+                              date: "$$item.bookedDate",
+                            },
+                          },
+                          formatedDate,
+                        ],
                       },
                       { $lt: ["$$item.booked", "$tableCount"] }, // Check if booked is less than tableCount
-                      { $eq: ["$$item.isDisabled", false] } // Ensure the item is not disabled
-                    ]
+                      { $eq: ["$$item.isDisabled", false] }, // Ensure the item is not disabled
+                    ],
                   },
                   {
                     $or: [
                       { $eq: ["$$item.bookedDate", null] }, // Include records with null bookedDate
                       {
                         $ne: [
-                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
-                          formatedDate // Include records with different bookedDate
-                        ]
-                      }
-                    ]
-                  }
-                ]
+                          {
+                            $dateToString: {
+                              format: "%Y-%m-%d",
+                              date: "$$item.bookedDate",
+                            },
+                          },
+                          formatedDate, // Include records with different bookedDate
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
             },
           },
@@ -786,29 +810,39 @@ export const getTableSlots = async (req, res) => {
                       { $ne: ["$$item.bookedDate", null] },
                       {
                         $eq: [
-                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
-                          formatedDate
-                        ]
+                          {
+                            $dateToString: {
+                              format: "%Y-%m-%d",
+                              date: "$$item.bookedDate",
+                            },
+                          },
+                          formatedDate,
+                        ],
                       },
                       { $lt: ["$$item.booked", "$tableCount"] }, // Check if booked is less than tableCount
-                      { $eq: ["$$item.isDisabled", false] } // Ensure the item is not disabled
-                    ]
+                      { $eq: ["$$item.isDisabled", false] }, // Ensure the item is not disabled
+                    ],
                   },
                   {
                     $or: [
                       { $eq: ["$$item.bookedDate", null] }, // Include records with null bookedDate
                       {
                         $ne: [
-                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
-                          formatedDate // Include records with different bookedDate
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
-          },          
+                          {
+                            $dateToString: {
+                              format: "%Y-%m-%d",
+                              date: "$$item.bookedDate",
+                            },
+                          },
+                          formatedDate, // Include records with different bookedDate
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
           dinnerSchedule: {
             $filter: {
               input: "$dinnerSchedule",
@@ -820,26 +854,36 @@ export const getTableSlots = async (req, res) => {
                       { $ne: ["$$item.bookedDate", null] },
                       {
                         $eq: [
-                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
-                          formatedDate
-                        ]
+                          {
+                            $dateToString: {
+                              format: "%Y-%m-%d",
+                              date: "$$item.bookedDate",
+                            },
+                          },
+                          formatedDate,
+                        ],
                       },
                       { $lt: ["$$item.booked", "$tableCount"] }, // Check if booked is less than tableCount
-                      { $eq: ["$$item.isDisabled", false] } // Ensure the item is not disabled
-                    ]
+                      { $eq: ["$$item.isDisabled", false] }, // Ensure the item is not disabled
+                    ],
                   },
                   {
                     $or: [
                       { $eq: ["$$item.bookedDate", null] }, // Include records with null bookedDate
                       {
                         $ne: [
-                          { $dateToString: { format: "%Y-%m-%d", date: "$$item.bookedDate" } },
-                          formatedDate // Include records with different bookedDate
-                        ]
-                      }
-                    ]
-                  }
-                ]
+                          {
+                            $dateToString: {
+                              format: "%Y-%m-%d",
+                              date: "$$item.bookedDate",
+                            },
+                          },
+                          formatedDate, // Include records with different bookedDate
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
             },
           },

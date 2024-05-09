@@ -200,7 +200,7 @@ export const getQuest = async (req, res) => {
       match = { _id: new mongoose.Types.ObjectId(questId) };
       let [quest, totalCompOrders] = await Promise.all([
         Quest.findById(questId)
-          .select("questTitle startedUsers completedUsers failedUsers")
+          .select("-__v -createdAt -updateAt")
           .lean(),
         Helper.HowManyOrderByUser(req.user._id),
       ]);

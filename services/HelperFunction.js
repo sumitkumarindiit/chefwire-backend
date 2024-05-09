@@ -144,12 +144,15 @@ export const updateQuestUsers = async (
       usr?.userId?.toString()
     );
     const startedIds = quest.startedUsers.map((usr) => usr?.userId?.toString());
+    
     if (completedOrders === totalOrders) {
       if (completedIds.includes(req.user._id.toString())) {
+        
         const expireTime = quest.startedUsers.find(
           (item) => item.userId.toString() === req.user._id.toString()
         )?.expireTime;
         if (expireTime && isExpired(expireTime)) {
+          
           await Promise.all([
             Quest.findByIdAndUpdate(quest._id, {
               $pull: { completedUsers: { userId: req.user._id } },
@@ -286,7 +289,6 @@ export const validateCartItems = async (items) => {
           }
         }
         totalPrice += priceDetail.unitPrice * priceDetail.quantity
-        console.log(priceDetail)
       }
     }
 
@@ -298,7 +300,7 @@ export const validateCartItems = async (items) => {
     throw new Error(`Error validating cart items: ${error.message}`);
   }
 };
-const isExpired = (expireTime) => {
+export const isExpired = (expireTime) => {
   return new Date(expireTime) < new Date();
 };
 export const getSlots = (startTime, endTime, interval) => {
